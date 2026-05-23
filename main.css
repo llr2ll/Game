@@ -1,0 +1,3 @@
+#fps-element{ font-family: monospace; position: fixed; color: #0f0; right: 10px; top: 10px }
+#root-window, #render-target { height: 100% }
+html, body { height: 100%; margin: 0 }
