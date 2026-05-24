@@ -5,8 +5,8 @@ let lastTime = performance.now()
 let frames = 0
 
 export function SmoothFollow(camera, player) {
-    target.set(player.position.x, player.position.y + 5, player.position.z + 7)
-    camera.position.lerp(target, 0.08)
+    target.set(player.position.x, player.position.y + 7, player.position.z + 7)
+    camera.position.lerp(target, 0.05)
     camera.lookAt(player.position)
 }
 

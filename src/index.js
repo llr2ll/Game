@@ -1,23 +1,23 @@
-import { LoadChunk, ProcessChunkQueue } from './world/tile/render'
+import { LoadChunk, ProcessChunkQueue } from './world/chunks/manager'
+import { SmoothFollow, Fps } from './camera/follow'
 import { CreatePlayer } from './characters/player'
-import { SmoothFollow, Fps } from './camera'
-import { Seed } from './world/seed.js'
+import { Light } from './camera/light'
 import * as THREE from 'three'
 
-export async function createScene() {
+export async function LoadGame() {
     const gameWindow = document.getElementById('render-target')
-    const camera = new THREE.PerspectiveCamera(75, gameWindow.offsetWidth / gameWindow.offsetHeight, 0.1, 1000)
-    const renderer = new THREE.WebGLRenderer()
-    const scene = new THREE.Scene()
-    const colliders = []
-
-    const player = await CreatePlayer(scene, colliders)
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight)
+    const renderer = new THREE.WebGLRenderer();
+    const scene = new THREE.Scene();
+    const colliders = [];
 
     renderer.setSize(gameWindow.offsetWidth, gameWindow.offsetHeight)
-    scene.background = new THREE.Color(0x777777)
+    const player = await CreatePlayer(scene, colliders)
+    window.addEventListener('resize', OnResize)
     gameWindow.appendChild(renderer.domElement)
-
-    function onResize() {
+    Light(scene)
+    
+    function OnResize() {
         const width = gameWindow.offsetWidth
         const height = gameWindow.offsetHeight
 
@@ -27,17 +27,14 @@ export async function createScene() {
         renderer.setSize(gameWindow.offsetWidth, gameWindow.offsetHeight)
     }
 
-    window.addEventListener('resize', onResize)
-
     function draw() {
-        LoadChunk(scene, player.mesh)
+        LoadChunk(scene, player.mesh, colliders)
         ProcessChunkQueue()
-        SmoothFollow(camera, player.mesh)
-        renderer.render(scene, camera)
-        Seed(scene, colliders)
-        player.move()
+        player.move();
+        SmoothFollow(camera, player.mesh);
+        renderer.render(scene, camera);
         Fps()
     }
 
-    return { start: renderer.setAnimationLoop(draw) }
+    return renderer.setAnimationLoop(draw)
 }

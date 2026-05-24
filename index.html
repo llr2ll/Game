@@ -6,9 +6,9 @@
         <div id="root-window"><div id="render-target"></div></div>
 
         <script type="module">
-            import { createScene } from './src/index.js'
+            import { LoadGame } from './src/index.js'
 
-            window.onload = async () => window.scene = await createScene()
+            window.onload = async () => window.scene = await LoadGame()
         </script>
     </body>
 </html>
