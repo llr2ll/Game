@@ -1,3 +1,17 @@
-#fps-element{ font-family: monospace; position: fixed; color: #0f0; right: 10px; top: 10px }
+html, body { height: 100%; margin: 0; background: #1b1512; overflow: hidden; font-family: system-ui, sans-serif }
 #root-window, #render-target { height: 100% }
-html, body { height: 100%; margin: 0 }
+#fps-element { font-family: monospace; position: fixed; color: #0f0; right: 10px; top: 10px; z-index: 5 }
+#hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px #000 }
+#top { position: absolute; left: 14px; top: 10px; font-weight: 700; font-size: 20px; display: flex; gap: 18px }
+#plist { position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px }
+.pl { background: #000a; padding: 6px 10px; border-radius: 8px; font-size: 13px; min-width: 190px }
+.pl .bar { height: 6px; background: #444; border-radius: 3px; margin-top: 4px; overflow: hidden }
+.pl .bar i { display: block; height: 100%; background: #6fd36f }
+.pl.dead { opacity: .5 }
+#room { position: absolute; right: 12px; top: 40px; background: #000a; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px }
+#room canvas { display: block; margin: 0 auto 6px; border-radius: 6px; background: #fff }
+#code { font: 700 30px monospace; letter-spacing: 6px }
+#url { opacity: .7; max-width: 170px; word-break: break-all; font-size: 10px }
+#msg { position: absolute; left: 0; right: 0; top: 28%; text-align: center; font-size: 46px; font-weight: 800; letter-spacing: 3px }
+#help { position: absolute; bottom: 8px; right: 12px; font-size: 11px; opacity: .6 }
+#room.hidden{display:none}

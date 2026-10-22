@@ -1,78 +1,54 @@
-import { CheckCollision } from "./player-collision"
-import * as THREE from 'three'
+import { resolve } from '../world/collision'
+import { Height } from '../world/terrain'
 
-export function playerMoviment(mesh, colliders){
-    const velocity = new THREE.Vector3()
-    let verticalSpeed = 0
-    let isJumping = false
-    let jumpHoldTime = 0
-    let grounded = true
-    const keys = {}
+const RADIUS = 0.45
+const WALK = 5.6, RUN = 8.6
+const GRAVITY = 24, JUMP = 9 // pulo ~1.7 de altura: passa por cerca (1.0), tronco e pedra
 
-    window.addEventListener('visibilitychange', () => { if (document.hidden) for (const key in keys) { keys[key] = false } })
-    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false)
-    window.addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true)
+const angleLerp = (a, b, k) => {
+  let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI
+  if (d < -Math.PI) d += Math.PI * 2
+  return a + d * k
+}
 
-    function move(){
-        const nextX = mesh.position.x + velocity.x
-        const nextZ = mesh.position.z + velocity.z
+// input: { mx, mz, ax, az, run } — sticks analógicos (-1..1). Mira e movimento são independentes (twin-stick).
+export function UpdatePlayerMovement(p, dt, colliders) {
+  const { mx, mz, ax, az, run } = p.input
+  const mm = Math.hypot(mx, mz), am = Math.hypot(ax, az)
+  p.aiming = am > 0.25
+  p.firing = p.aiming
+  const k = mm > 0.12 ? Math.min(mm, 1) : 0
 
-        let x = 0
-        let z = 0
+  // corrida gasta fôlego; se zerar, só volta a correr depois de recuperar
+  p.running = !!run && k > 0.3 && !p.tired && p.stamina > 0
+  p.stamina = p.running ? Math.max(0, p.stamina - 28 * dt) : Math.min(100, p.stamina + 18 * dt)
+  if (p.stamina <= 0) p.tired = true
+  else if (p.tired && p.stamina >= 30) p.tired = false
 
-        if(keys.w) z -= 1
-        if(keys.s) z += 1
-        if(keys.a) x -= 1
-        if(keys.d) x += 1
+  const grounded = p.jy <= 0.001
+  const speed = (p.running ? RUN : WALK) * (p.firing ? 0.85 : 1)
+  const tx = k ? (mx / mm) * speed * k : 0
+  const tz = k ? (mz / mm) * speed * k : 0
+  const f = 1 - Math.exp(-(grounded ? 18 : 7) * dt)
+  p.vx += (tx - p.vx) * f
+  p.vz += (tz - p.vz) * f
 
-        const speed = keys.shift ? 0.10 : 0.06
+  // pulo
+  p.vy -= GRAVITY * dt
+  p.jy += p.vy * dt
+  if (p.jy <= 0) { p.jy = 0; p.vy = 0 }
 
-        if( x !== 0 || z !== 0 ){
+  p.x += p.vx * dt
+  p.z += p.vz * dt
+  resolve(p, RADIUS, colliders, p.jy)
 
-            const length = Math.hypot(x, z)
+  if (p.aiming) p.aimAngle = Math.atan2(ax, az)
+  else if (k) p.aimAngle = Math.atan2(mx, mz)
+  p.facing = angleLerp(p.facing, p.aimAngle, Math.min(1, dt * 22))
 
-            x /= length
-            z /= length
-
-            velocity.x += x * 0.01
-            velocity.z += z * 0.01
-
-            const current = Math.hypot(velocity.x, velocity.z)
-
-            if(current > speed) velocity.multiplyScalar(speed / current)
-
-            const targetRotation = Math.atan2(velocity.x, velocity.z)
-            mesh.rotation.y += (targetRotation - mesh.rotation.y) * 0.15
-        }
-        else velocity.multiplyScalar(0.9)
-
-        if (keys[' '] && grounded && !isJumping){
-            verticalSpeed = 0.16
-            grounded = false
-            isJumping = true
-            jumpHoldTime = 0
-        }
-
-        if (isJumping && keys[' '] && verticalSpeed > 0){
-            jumpHoldTime += 0.016
-
-            if (jumpHoldTime < 0.5) verticalSpeed += 0.0035
-        }
-
-        verticalSpeed -= 0.009
-        mesh.position.y += verticalSpeed
-
-        if (mesh.position.y < 0.5) {
-            mesh.position.y = 0.5
-            verticalSpeed = 0
-            grounded = true
-            isJumping = false
-            jumpHoldTime = 0
-        }
-
-        if (!CheckCollision({ x: nextX, z: mesh.position.z }, colliders, mesh)) mesh.position.x = nextX
-        if (!CheckCollision({ x: mesh.position.x, z: nextZ }, colliders, mesh)) mesh.position.z = nextZ
-    }
-
-    return move
+  p.gy = Height(p.x, p.z)
+  p.y = p.gy + p.jy
+  p.model.root.position.set(p.x, p.y, p.z)
+  p.model.root.rotation.y = p.facing
+  p.speed = Math.hypot(p.vx, p.vz)
 }

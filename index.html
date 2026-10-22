@@ -1,14 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head><meta charset="UTF-8"><link rel="stylesheet" href="main.css"></head>
-    <body>
-        <div id="fps-element"></div>
-        <div id="root-window"><div id="render-target"></div></div>
-
-        <script type="module">
-            import { LoadGame } from './src/index.js'
-
-            window.onload = async () => window.scene = await LoadGame()
-        </script>
-    </body>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Game</title>
+    <link rel="stylesheet" href="main.css" />
+  </head>
+  <body>
+    <div id="fps-element"></div>
+    <div id="root-window"><div id="render-target"></div></div>
+    <div id="hud">
+      <div id="top"><span id="wave"></span><span id="score"></span></div>
+      <div id="plist"></div>
+      <div id="room">
+        <canvas id="qr" width="130" height="130"></canvas>
+        <div id="code">----</div>
+        <div id="url"></div>
+        <small>No celular: escaneie ou abra o link</small>
+      </div>
+      <div id="msg"></div>
+      <div id="help">PC (teste): WASD mover · mouse mirar/atirar · 1 pistola · 2 carabina · R recarregar · H esconde sala</div>
+    </div>
+    <script type="module">
+      import { LoadGame } from './src/index.js'
+      window.onload = async () => (window.scene = await LoadGame())
+    </script>
+  </body>
 </html>
