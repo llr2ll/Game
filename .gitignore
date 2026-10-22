@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+
+.vite/
+.cache/
+
+*.glb
+*.gltf
+
+.DS_Store
