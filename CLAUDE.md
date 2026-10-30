@@ -145,7 +145,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
 - **Não existe seed.** O mundo é uma função fixa das coordenadas (`hash` em `src/world/noise.js`): toda partida acontece no mesmo mapa.
   Zumbis, clima e efeitos usam `Math.random` (não são determinísticos). "Mesmo mundo" = mesmas casas/estradas/nomes nas mesmas coordenadas.
 - **Memória (medida na F2, 10 min de sedã em linha reta, ~14 km, sem desenhar):** antes, +7,5 MB por minuto sem parar (171 → 256 MB);
-  os maiores caches eram postes (25 mil itens), chão, descritor de chunk e vilas. Depois da F2: ver o PR da F2 (números no histórico abaixo).
+  os maiores caches eram postes (25 mil itens), chão, descritor de chunk e vilas. Depois da F2: estável em ~197 MB (histórico abaixo).
   Roteiro de medição: não versionado (Playwright + `performance.memory` com `--enable-precise-memory-info --js-flags=--expose-gc`).
 - **Defeito conhecido (não corrigido, muda o visual):** o atlas de placas (`shared/worldgen/sign-atlas.js`) tem espaço para ~16 painéis de direção
   e ~64 marcos de km. Quando enche, volta ao início e desenha por cima, mas o `slots` continua apontando as chaves antigas para lá:
@@ -177,6 +177,10 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **fundacao-instancias (F2)** — `CreateChunks` (instância, `reset()`), postes dentro de `CreateStreetLights`, vagas de carro dentro de
+  `CreateVehicles`; `ResetColliders`/`ResetBuildings`/`ResetSignAtlas`; 15 caches com `LimitedCache` + `TrimCaches` no descarregamento;
+  `npm run check` ganhou o teste de esquecer caches. Memória em 10 min de sedã (~14 km): antes 171 → 256 MB subindo 7,5 MB/min;
+  depois estável em ~195–197 MB a partir do 3º minuto. Mesmo mundo, mesmo jogo.
 - **fundacao-pastas (F1)** — código em `src/engine`, `src/shared`, `src/games/survivor`; `npm run check` (camadas + impressão digital do mundo);
   ligações que subiam viraram avisos (`events`) ou funções passadas pelo jogo (`Wire()`); `THREE.Clock` → `THREE.Timer`
   (`engine/core/loop.js`); contrato de input em `engine/input/contract.js`. Mesmo mundo (hash igual ao de antes), mesmo jogo.
