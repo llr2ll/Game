@@ -2,6 +2,7 @@ import { hash } from '../../engine/world/noise'
 import { NodeX, NodeZ, NodeType, NodeArms, ARMS, StationOf, ZONE, ROAD_HALF, GRID, ROW_Z, VSeg, HSeg, STREET_HW, STREET_OFF, CHUNK_SIZE, ArterialDist, SW_ART, SW_LOC } from './layout'
 import { SPECS, VariantCount } from './buildings'
 import { WaterSD } from './water'
+import { LimitedCache } from '../../engine/core/memo'
 // nada de casa/decoração/plantação dentro ou colado na água
 const dry = (it) => WaterSD(it.x, it.z) > Math.hypot(it.hw, it.hd) + 1.2
 
@@ -39,7 +40,7 @@ function streetLamps(out, homes, kind, axis, c, o, hw, at) {
 }
 const both = (ts) => ts.flatMap((t) => [[t, -1], [t, 1]])
 
-const cache = new Map(), lotCache = new Map()
+const cache = LimitedCache(1000, (k) => lotCache.delete(k)), lotCache = new Map() // os lotes da cidade são esquecidos junto com ela
 // lotes vagos de uma cidade: { id, kind, type, x0, x1, z0, z1, fx, fz, seed, bus, home? } (o conteúdo é montado em city-lots.js)
 export function CityLots(i, j) { Town(i, j); return lotCache.get(`${i},${j}`) || [] }
 export function Town(i, j) {
@@ -192,7 +193,7 @@ function fieldBehind(rnd, axis, x, z, side, back) {
 const fieldOk = (it) => it.t !== 'f' || [[-1, -1], [1, -1], [-1, 1], [1, 1]].every(([a, b]) => ArterialDist(it.x + a * it.hw, it.z + b * it.hd) > ROAD_HALF + 2.5)
 
 // casas isoladas à beira das estradas principais (fora dos povoados)
-const rsCache = new Map()
+const rsCache = LimitedCache(2500)
 function Roadside(axis, i, j) {
   const k = `${axis}${i},${j}`
   if (rsCache.has(k)) return rsCache.get(k)

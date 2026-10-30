@@ -16,7 +16,7 @@ import { ApplyInput } from '../../../engine/input/contract'
 const MAX_PLAYERS = 4
 const REVIVE_T = 25, SUPPLY_T = 75
 
-// hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos) }
+// hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?) }
 export function CreateGame(scene, colliders, net, hooks = {}) {
   const players = new Map()
   const wfx = CreateWaterFX(scene) // ondas e respingos
@@ -28,7 +28,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const say = (t, s = 2.2) => { st.msg = t; st.msgT = s }
   const alive = () => [...players.values()].filter((p) => !p.dead)
 
-  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false) })
+  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true) })
   const enemies = horde.list
 
   // dano num zumbi (todas as fontes: tiro, espada, magia, onda, pisão, atropelamento); p = quem leva o crédito

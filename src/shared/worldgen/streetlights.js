@@ -91,11 +91,6 @@ export function BuildLampFx(g, lamps, dispose) {
   mk(HALO_GEO, HaloMat, (l) => { _p.set(l.x, l.y + 0.08, l.z); _s.setScalar(l.halo) }, 7)
 }
 
-// ---------- registro dos postes carregados (o gerenciador de chunks põe e tira) ----------
-const loaded = new Set()
-export const AddLamps = (list) => { if (list && list.length) loaded.add(list) }
-export const RemoveLamps = (list) => { loaded.delete(list) }
-
 // ---------- semáforos: 2 fases (uma por via), lentes 0 vermelho · 1 amarelo · 2 verde ----------
 const GREEN = 9, YELLOW = 2.5, ALL_RED = 1.5, HALF = GREEN + YELLOW + ALL_RED, CYCLE = HALF * 2
 const T_ON = [0xff3b2f, 0xffc23a, 0x3bff7a].map((c) => new THREE.Color(c)), T_OFF = [0x3a1714, 0x3a3014, 0x143a22].map((c) => new THREE.Color(c))
@@ -117,7 +112,11 @@ export function CreateStreetLights(scene) {
   }
   let t = 0, scanT = 0, near = Infinity
   const cand = []
+  const loaded = new Set() // postes dos chunks carregados (o jogo põe e tira junto com os chunks)
   return {
+    add(list) { if (list && list.length) loaded.add(list) },
+    remove(list) { loaded.delete(list) },
+    reset() { loaded.clear() },
     // para o som: quão aceso (0..1) e a distância do poste aceso mais perto de alguém
     get lit() { return night.value },
     get near() { return near },

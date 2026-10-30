@@ -1,4 +1,5 @@
 import { hash, smooth } from '../../engine/world/noise'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Rede de estradas + povoados (vilas e cidades pequenas). Tudo determinístico (só hash).
 // Linhas verticais em x = 64·i; horizontais em z = ROW_Z + 64·j. Cada cruzamento ("nó") pode virar cidade ou vila.
@@ -12,7 +13,7 @@ export const FLAT = 11 // faixa totalmente plana ao lado das estradas principais
 export const NodeX = (i) => i * GRID
 export const NodeZ = (j) => ROW_Z + j * GRID
 
-const nodeCache = new Map()
+const nodeCache = LimitedCache(2500) // tipo de cada cruzamento; esquece o que ficou para trás
 const nkey = (i, j) => (i + 2048) * 4096 + (j + 2048)
 
 export function NodeType(i, j) {
@@ -182,7 +183,7 @@ export function StationOf(cx, cz) {
 export const ARMS = [[0, -1], [0, 1], [-1, 0], [1, 0]] // N, S, W, E (direção de cada braço, saindo do nó)
 export const NodeArms = (i, j) => [VSeg(i, j - 1), VSeg(i, j), HSeg(i - 1, j), HSeg(i, j)]
 
-const endCache = new Map()
+const endCache = LimitedCache(600)
 // pontas de um nó: da estrada principal (nó vazio com um só braço) e das ruas locais (cidades)
 export function EndsOfNode(i, j) {
   const k = nkey(i, j)

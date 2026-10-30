@@ -3,7 +3,6 @@ import { resolve, Blocked, HitWall } from '../../../engine/world/collision'
 import { GroundAt, TooDeep } from '../../../shared/worldgen/sidewalk'
 import { FloorAt, PointInBuilding } from '../../../shared/worldgen/buildings-registry'
 import { InZone } from '../../../shared/worldgen/layout'
-import { ChunkLoaded } from '../../../engine/world/chunks'
 import { CreateZombieModel, VARIANTS, GETUP_T } from '../../../shared/creatures/zombie-model'
 import { Navigate, wrap, turnTo } from '../../../engine/world/pathing'
 import { sfx, gate } from '../../../shared/audio/sfx'
@@ -27,7 +26,7 @@ const _v = new THREE.Vector3()
 const rnd = (a, b) => a + Math.random() * (b - a)
 const sameLv = (a, b) => (a.lv || 0) === (b.lv || 0)
 
-// ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night() }
+// ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?) }
 export function CreateHorde(ctx) {
   const { scene, fx, gore } = ctx
   const list = []
@@ -376,7 +375,7 @@ export function CreateHorde(ctx) {
       const t = alive[(Math.random() * alive.length) | 0]
       const a = Math.random() * Math.PI * 2, d = rnd(SPAWN_MIN, SPAWN_MAX) + (t.vehicle ? 8 : 0)
       const x = t.x + Math.sin(a) * d, z = t.z + Math.cos(a) * d
-      if (!ChunkLoaded(x, z) || Blocked(x, z, 0.8) || PointInBuilding(x, z, 1.2)) continue
+      if (!ctx.loaded(x, z) || Blocked(x, z, 0.8) || PointInBuilding(x, z, 1.2)) continue
       if (alive.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < (SPAWN_MIN - 4) ** 2)) continue
       if (n < 8 && !InZone(x, z, 8) && Math.random() < 0.45) continue // prefere povoados
       return [x, z]
@@ -447,7 +446,7 @@ export function CreateHorde(ctx) {
         if (e.state === 'dead' || e.state === 'grab') continue
         const n = nearest(e, alive), d = Math.hypot(n.x - e.x, n.z - e.z)
         if (living > want + 6 && d > 30 && e.state !== 'chase') { remove(i); living--; continue } // horda menor (amanheceu)
-        if (d < FAR && ChunkLoaded(e.x, e.z)) continue
+        if (d < FAR && ctx.loaded(e.x, e.z)) continue
         const pt = spawnPoint(alive)
         if (pt) { reset(e, pt[0], pt[1]); arrive(e, alive) } else { remove(i); living-- }
       }

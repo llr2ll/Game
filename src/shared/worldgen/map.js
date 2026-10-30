@@ -10,6 +10,7 @@ import { WearFor } from './roadwear'
 import { WaterSD, WATER_Y } from './water'
 import { WaterLife, NearWaterStruct } from './water-life'
 import { GRID as WGRID, ROW_Z as WROW } from './layout'
+import { LimitedCache } from '../../engine/core/memo'
 
 export { hash, CHUNK_SIZE, ROAD_HALF, StationOf }
 
@@ -43,7 +44,7 @@ function nearTree(x, z, d) {
   return false
 }
 
-const cache = new Map()
+const cache = LimitedCache(600) // descritor por chunk; esquece o que ficou para trás
 
 export function Seed(cx, cz) {
   const id = `${cx},${cz}`

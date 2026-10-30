@@ -3,6 +3,7 @@ import { CHUNK_SIZE, GRID, ROW_Z, NodeType, NodeZ, ZONE, RoadRects, SW_ART, SW_L
 import { Height } from './terrain'
 import { DeckAt } from './water-life'
 import { WATER_Y } from './water'
+import { LimitedCache } from '../../engine/core/memo'
 
 // =====================================================================================
 //  Calçadas de verdade: laje elevada (CURB_H) com meio-fio, nas avenidas e ruas das cidades e na estrada das vilas.
@@ -39,7 +40,7 @@ function spans(r) {
 }
 const widthAt = (r, t) => { for (const s of spans(r)) if (t >= s.lo && t <= s.hi) return s.w; return 0 }
 
-const cache = new Map()
+const cache = LimitedCache(600) // por chunk; esquece o que ficou para trás (engine/core/memo.js)
 export function SidewalkRects(cx, cz) {
   const key = cx * 100003 + cz
   if (cache.has(key)) return cache.get(key)

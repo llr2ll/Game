@@ -25,10 +25,12 @@ npm run build    # gera dist/ (para hospedar)
 Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesmo host>:8080` (`src/engine/net/host.js`, `src/engine/input/phone.js`).
 
 ## Como testar
-- `npm run check` — rápido (~3 s), sem navegador. Rodar SEMPRE antes de abrir PR. Duas verificações:
+- `npm run check` — rápido (~7 s), sem navegador. Rodar SEMPRE antes de abrir PR. Três verificações:
   1. **Camadas:** imports só descem (`games/<jogo>` → `shared` → `engine`); um jogo não importa outro; import para arquivo inexistente falha.
   2. **Mundo:** gera 515 chunks + nomes sem desenhar (via Vite) e compara o hash com `scripts/world-fingerprint.txt`.
      Se o mundo mudar sem querer, falha. Mudança de propósito (precisa de OK do dono): `npm run check -- --update-world`.
+  3. **Caches:** gera um trecho de novo com os limites dos caches encolhidos (x0, x0,004, x0,02), esquecendo antes de cada chunk;
+     tem de dar igual. Pega cache que guarda estado ou caches ligados esquecidos separados (testado: acusa o erro).
 - `npm run smoke` — teste automático (~3 min). Compila o jogo, sobe relay **8099** e página **5199** (não briga com o dev/server do dono),
   abre no Chromium sem tela, entra 1 teclado (Atirador) + 1 celular simulado (Samurai), joga 60 s (anda, atira, habilidades, carro, noite),
   aperta Esc e confere a volta ao menu. **Falha se aparecer qualquer `console.error` ou erro de página.** Capturas e log em `smoke/` (versionados: o PR mostra as capturas).
@@ -47,14 +49,15 @@ scripts/                  smoke.mjs (teste no navegador sem tela), check.mjs (ca
 smoke/                    capturas + log do último npm run smoke
 docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-DESIGN (direção criativa)
 src/engine/               genérico
-  core/                   events.js (avisos entre partes), loop.js (laço de desenho com THREE.Timer, dt ≤ 0,05)
+  core/                   events.js (avisos entre partes), loop.js (laço de desenho com THREE.Timer, dt ≤ 0,05),
+                          memo.js (cache com limite para o mundo infinito)
   render/                 splitscreen.js (junta <13 m, separa >19 m), light.js, style.js (paleta, materiais, vento),
                           entity-shadows.js (sombras falsas), follow.js (contador de FPS)
   input/                  contract.js (contrato de input), keyboard.js (teclado+mouse), phone.js (código do celular)
   net/host.js             conexão da tela com o relay
   audio/engine.js         Web Audio: barramentos, primitivas, som posicional
   world/                  noise.js (hash/ruído), collision.js (grade de colisão), chunks.js (carrega/descarrega chunks),
-                          pathing.js (desvio, A*, rota dentro de casas)
+                          pathing.js (desvio, A*, rota dentro de casas) — chunks.js é instância (CreateChunks)
   ui/lobby.js             menu de 4 vagas (celular ou teclado); textos e sons vêm do jogo
 src/shared/               peças prontas
   characters/             player.js (esqueleto/animação), looks.js (visual), kits.js (armas + IK), player-movement.js
@@ -74,12 +77,25 @@ src/games/survivor/       este jogo
   ui/hud.js               placar da partida
 ```
 
-**Como as camadas conversam sem import subindo** (tudo ligado em `Wire()` de `games/survivor/main.js`):
+**Como as camadas conversam sem import subindo** (ligado em `games/survivor/main.js`):
 - Avisos (`engine/core/events.js`): o mundo emite `door-open`, `door-close`, `thunder`, `splash`, `vehicle-spot`; o jogo decide o som/carro.
-- Funções passadas ao motor: `SetupChunks({ size, generate, onLoad, onUnload })`, `SetDeepTest` (água funda), `SetIndoorRoute`
-  (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `labels`, `sound`, `subtitle`. Teclado recebe as teclas extras.
-- Ainda são variáveis de módulo (estado global). A fundação F2 troca por instâncias criadas no `main.js`, com `reset()`.
+- Funções passadas ao motor: `CreateChunks({ scene, colliders, size, generate, onLoad, onUnload, afterUnload })`, `SetDeepTest` (água funda),
+  `SetIndoorRoute` (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `labels`, `sound`, `subtitle`. Teclado, as teclas extras.
 - `shared` pode importar `shared` (ex.: `creatures/zombie-model` usa `SoleDepth` de `characters/player`; `fx/gore` usa `worldgen`).
+
+**Estado e memória (F2)** — o que é instância e o que continua único:
+- Instâncias criadas no `main.js`: `chunks = CreateChunks(…)` (com `reset()`), postes carregados dentro de `CreateStreetLights` (`add/remove/reset`),
+  vagas de carro dentro de `CreateVehicles` (`register`; vaga nunca usada a mais de 120 m é esquecida; as 3 da largada nunca).
+  A horda recebe `loaded(x, z)` pelo `ctx` (antes importava `ChunkLoaded`).
+- Continuam únicos por módulo, com reset: grade de colisão (`ResetColliders`), registro de casas (`ResetBuildings`), atlas de placas (`ResetSignAtlas`),
+  canal de avisos e ganchos `Set…`. Motivo: virar instância exigiria passar um parâmetro novo por ~7 módulos (movimento, carros, horda, habilidades,
+  gore, som, regras) sem ganho hoje — só um jogo roda por vez. Fazer só se um dia precisar de dois mundos ao mesmo tempo.
+- Recomeçar em outro lugar do mapa (ex.: Paróquia em outra vila), nesta ordem: `game.clear()` → `chunks.reset()` → `ResetColliders()`,
+  `ResetBuildings()`, `ResetSignAtlas()`, `streetLights.reset()`. Hoje ninguém chama: o mundo continua entre partidas.
+- Caches do mundo: 15 caches de funções puras usam `LimitedCache(limite)` (`engine/core/memo.js`), limite ≈ 10× o que a área carregada usa.
+  `TrimCaches()` roda quando chunks são descarregados e esquece os mais antigos. Caches ligados esquecem juntos (`onEvict`; ex.: vila → lotes em `town.js`).
+  Caches por tipo/variante (geometria de casas, móveis, materiais, cores) têm tamanho fixo e continuam `Map` comum.
+  Cache novo do mundo, guardado por posição? Use `LimitedCache` e não guarde estado nele (o `npm run check` testa).
 
 ## Contrato de input (proteger)
 Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
@@ -128,11 +144,13 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
 ## Fatos que não são óbvios no código
 - **Não existe seed.** O mundo é uma função fixa das coordenadas (`hash` em `src/world/noise.js`): toda partida acontece no mesmo mapa.
   Zumbis, clima e efeitos usam `Math.random` (não são determinísticos). "Mesmo mundo" = mesmas casas/estradas/nomes nas mesmas coordenadas.
-- Estado global em módulos (F2 resolve): chunks (`engine/world/chunks.js`), grade de colisão (`engine/world/collision.js`),
-  registro de prédios (`shared/worldgen/buildings-registry.js`), postes (`shared/worldgen/streetlights.js`), atlas de placas (`shared/worldgen/sign-atlas.js`),
-  vagas de carro (`shared/vehicles/vehicles.js`), canal de avisos (`engine/core/events.js`) e os ganchos `Set…` do motor.
-- ~20 caches `Map` do mundo nunca são limpos (`worldgen/map.js`, `town.js`, `city-lots.js`, `buildings.js`, `props.js`, `poles.js`, `signs.js`, `names.js`,
-  `layout.js`, `endings.js`, `water.js`, `water-life.js`, `sidewalk.js`, `roadwear.js`…). Medir a memória antes de mexer (F2).
+- **Memória (medida na F2, 10 min de sedã em linha reta, ~14 km, sem desenhar):** antes, +7,5 MB por minuto sem parar (171 → 256 MB);
+  os maiores caches eram postes (25 mil itens), chão, descritor de chunk e vilas. Depois da F2: ver o PR da F2 (números no histórico abaixo).
+  Roteiro de medição: não versionado (Playwright + `performance.memory` com `--enable-precise-memory-info --js-flags=--expose-gc`).
+- **Defeito conhecido (não corrigido, muda o visual):** o atlas de placas (`shared/worldgen/sign-atlas.js`) tem espaço para ~16 painéis de direção
+  e ~64 marcos de km. Quando enche, volta ao início e desenha por cima, mas o `slots` continua apontando as chaves antigas para lá:
+  depois de 1–2 km de estrada, uma placa pode mostrar o texto de outra. Correção proposta: contar quem usa cada região (carregar/descarregar
+  chunk) e só reaproveitar região livre. PR próprio, com OK do dono.
 - `npm audit` acusa falhas em dependências do Vite (nanoid, postcss, source-map-js). Já existiam; não corrigidas (perguntar ao dono antes).
 - Depois do merge do PR "limpeza", `git pull` apaga a pasta `node_modules` (ela saiu do Git) → rodar `npm install` de novo.
 - **Escala das placas:** 1 km de placa = 32 m de jogo (marcos de km a cada 32 m; cada trecho de 64 m entre cruzamentos = "2 km").
@@ -146,7 +164,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
   Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
 
 ## Plano da sessão de fundação (30/10/2026)
-0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR aberto) · F2 · F3.
+0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR aberto) · F3.
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis

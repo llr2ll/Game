@@ -13,6 +13,9 @@ function cellsOf(c, fn) {
     for (let j = Math.floor((c.z - c.hd) / CELL); j <= j1; j++) fn(key(i, j))
 }
 
+// esquece todos os colisores (só depois de descarregar os chunks e tirar os carros)
+export const ResetColliders = () => grid.clear()
+
 export function AddColliders(list) {
   for (const c of list) cellsOf(c, (k) => { let a = grid.get(k); if (!a) grid.set(k, (a = [])); a.push(c) })
 }

@@ -1,5 +1,6 @@
 import { hash } from '../../engine/world/noise'
 import { EndsNear } from './layout'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Finais de estrada: obra, praça redonda com bancos, mato, mini-praça de rua local.
 // Tudo calculado a partir da ponta (E = fim do asfalto, u = sentido para fora da estrada, l = lateral). Função pura (cache por ponta).
@@ -8,7 +9,7 @@ function rng(seed) {
   let s = Math.floor(seed * 4294967295) | 0 || 1
   return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296 }
 }
-const cache = new Map()
+const cache = LimitedCache(600) // esquece o que ficou para trás
 
 export function PlaceEnd(e) {
   if (cache.has(e.id)) return cache.get(e.id)

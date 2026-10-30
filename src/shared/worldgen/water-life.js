@@ -1,6 +1,7 @@
 import { hash } from '../../engine/world/noise'
 import { GRID, ROW_Z, ArterialDist, InZone } from './layout'
 import { CellWater, RiverZ, riverW, WaterSD, WATER_Y } from './water'
+import { LimitedCache } from '../../engine/core/memo'
 
 // =====================================================================================
 //  Estruturas da água (determinísticas, por célula): píeres nos lagos, pontezinhas de madeira e pedras de
@@ -8,7 +9,7 @@ import { CellWater, RiverZ, riverW, WaterSD, WATER_Y } from './water'
 //  para andar no píer, atravessar a ponte e pular de pedra em pedra.
 // =====================================================================================
 export const DECK_Y = WATER_Y + 0.5 // piso do píer
-const cache = new Map()
+const cache = LimitedCache(600) // por célula; esquece o que ficou para trás
 const ckey = (i, j) => (i + 2048) * 4096 + (j + 2048)
 
 export function WaterLife(i, j) {

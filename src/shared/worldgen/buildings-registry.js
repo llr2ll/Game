@@ -6,6 +6,7 @@ import { events } from '../../engine/core/events'
 const set = new Set()
 export const AddBuildings = (arr) => arr.forEach((b) => set.add(b))
 export const RemoveBuildings = (arr) => arr.forEach((b) => set.delete(b))
+export const ResetBuildings = () => set.clear()
 const inRect = (b, x, z) => x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1
 
 // A câmera fica atrás (+z) e acima do jogador: a linha de visada sobe CAM_SLOPE por metro em direção à câmera.

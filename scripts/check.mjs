@@ -4,6 +4,8 @@
 //    Também falha se um import aponta para arquivo que não existe.
 // 2. Mundo: gera ~500 pedaços do mapa sem desenhar e compara a "impressão digital" com scripts/world-fingerprint.txt.
 //    Mudou sem querer = mesmo lugar, outro mundo. Se a mudança foi de propósito: npm run check -- --update-world
+//    Também gera um trecho de novo forçando os caches (engine/core/memo.js) a esquecer tudo antes de cada chunk:
+//    tem de dar igual (esquecer só pode custar tempo, nunca mudar o mundo).
 import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
@@ -73,7 +75,25 @@ async function worldFingerprint() {
     let n = 0
     for (const [x0, x1, z0, z1] of areas) for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) { h.update(JSON.stringify(Seed(cx, cz))); n++ }
     for (let i = -8; i <= 8; i++) for (let j = -8; j <= 8; j++) h.update(JSON.stringify([NodeType(i, j), NodeName(i, j), [0, 1, 2, 3].map((k) => Destination(i, j, k))]))
-    return `${n} chunks · ${h.digest('hex')}`
+    const fp = `${n} chunks · ${h.digest('hex')}`
+
+    // esquecimento forçado: largada + primeira cidade + um trecho longe
+    const { SetCacheScale, TrimCaches } = await vite.ssrLoadModule('/src/engine/core/memo.js')
+    const part = (trim) => {
+      const g = createHash('sha256')
+      for (const [x0, x1, z0, z1] of [[-6, 6, -4, 8], [38, 40, -52, -50]]) for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) { if (trim) TrimCaches(); g.update(JSON.stringify(Seed(cx, cz))) }
+      return g.digest('hex')
+    }
+    // limites pequenos (esquece quase tudo / só parte): pega cache que guarda estado ou caches ligados esquecidos separados
+    const warm = part(false)
+    for (const scale of [0, 0.004, 0.02]) {
+      SetCacheScale(scale)
+      const cold = part(true)
+      SetCacheScale(1)
+      if (warm !== cold) { problems.push(`esquecer os caches mudou o mundo (limite x${scale}): algum cache guarda estado (veja engine/core/memo.js)`); break }
+    }
+    if (!problems.length) console.log('caches: esquecer não muda o mundo')
+    return fp
   } finally { await vite.close() }
 }
 try {

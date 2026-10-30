@@ -3,6 +3,7 @@ import { NodeX, NodeZ, NodeType, NodeArms, ARMS, ZONE, GRID, ROW_Z, ROAD_HALF, S
 import { ItemsNear } from './town'
 import { PoleNear } from './poles'
 import { NodeName, RoadCode, StreetName, Destination } from './names'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Sinalização (função pura do mundo): placas de rua nas cidades, semáforos, faixas de pedestre, entradas de povoado,
 // painéis de direção e marcos de quilômetro nas estradas. Cada item é um descritor; o gerador de chunks desenha só os do seu chunk.
@@ -10,7 +11,7 @@ import { NodeName, RoadCode, StreetName, Destination } from './names'
 //  { kind:'km', x, z, ry, plates:[...] }     { kind:'light', x, z, ry, grp }     { kind:'paint', x, z, w, d, color }
 //  grp = fase do semáforo (0/1): as duas vias de um cruzamento ficam em fases opostas (world/streetlights.js)
 const WHITE = 0xf2f2f0
-const cache = new Map()
+const cache = LimitedCache(600) // placas por cruzamento; esquece o que ficou para trás
 
 const stationNear = (x, z, m) => { const st = StationOf(0, Math.floor((z + 0.5) / CHUNK_SIZE)); return !!st && Math.abs(x - st.x) < m && Math.abs(z - st.z) < m }
 const blocked = (x, z, m) => ItemsNear(x - m, x + m, z - m, z + m).length > 0 || stationNear(x, z, 7)

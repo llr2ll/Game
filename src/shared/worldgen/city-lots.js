@@ -3,6 +3,7 @@ import { NodeX, NodeZ, NodeType, GRID, ROW_Z, ROAD_HALF, SW_ART, SW_LOC, STREET_
 import { CityLots, Town, nearRect } from './town'
 import { SPECS } from './buildings'
 import { SignsNear } from './signs'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Conteúdo dos lotes vagos das cidades (estacionamento, jardim, praça, terraço de café, banca, chafariz, quintal)
 // e o mobiliário das calçadas (lixeiras, hidrantes). Função pura por lote (cache): os chunks só pegam o que cai neles.
@@ -20,7 +21,7 @@ const FOOT = {
 }
 const NAMES = ['Xardín da Fonte', 'Praza do Concello', 'Parque do Carme', 'Xardín de Rosalía', 'Praza da Feira', 'Alameda Vella', 'Parque da Estación', 'Xardín do Pazo', 'Praza das Flores']
 
-const cache = new Map()
+const cache = LimitedCache(1000) // por lote; esquece o que ficou para trás
 export function LotContent(L) {
   if (cache.has(L.id)) return cache.get(L.id)
   const R = rng(hash(L.seed * 1e3, L.x0 + L.z0, 720))
@@ -221,7 +222,7 @@ function avenueFront(L) {
 }
 
 // ---------- calçadas: lixeiras ao lado dos postes de luz e hidrantes do outro lado da rua ----------
-const streetCache = new Map()
+const streetCache = LimitedCache(600)
 function StreetFurniture(i, j) {
   const k = `${i},${j}`
   if (streetCache.has(k)) return streetCache.get(k)

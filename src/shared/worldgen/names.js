@@ -1,5 +1,6 @@
 import { hash } from '../../engine/world/noise'
 import { NodeType, NodeArms, ARMS, GRID, NodeX, NodeZ } from './layout'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Nomes (cidades, ruas, estradas) determinísticos: mesmo mundo => mesmos nomes em qualquer chunk.
 const PRE = ['Vila', 'Castro', 'Pena', 'Ponte', 'Cova', 'Mon', 'Lama', 'Val', 'Outeiro', 'Pedra', 'Carballo', 'Fonte', 'Rio', 'Monte']
@@ -10,7 +11,7 @@ const ART = ['A ', 'O ']
 const THING = ['Pobra', 'Carballiño', 'Estrada', 'Pontenova', 'Rúa', 'Cañiza', 'Barca']
 const pick = (a, h) => a[Math.floor(h * a.length) % a.length]
 
-const nameCache = new Map()
+const nameCache = LimitedCache(600) // esquece o que ficou para trás
 export function NodeName(i, j) {
   const k = `${i},${j}`
   if (nameCache.has(k)) return nameCache.get(k)

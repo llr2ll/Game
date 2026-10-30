@@ -8,34 +8,36 @@ import { hash } from '../../engine/world/noise'
 import { sfx, gate } from '../audio/sfx'
 
 // Veículos dirigíveis para os 4 jogadores.
-// - Os carros "abandonados" do mapa (props 'car' dos chunks) e três na largada se registram aqui como pontos de nascimento;
+// - Os carros "abandonados" do mapa (props 'car' dos chunks, via register) e três na largada são pontos de nascimento;
 //   o veículo de verdade só existe perto de alguém. Um veículo que já foi usado nunca some.
 // - Direção relativa ao carro: cima/W acelera, baixo/S freia e depois dá ré, esquerda/direita viram o volante.
 //   Arrasto lateral limitado = derrapagem nas curvas rápidas.
 // - Cada veículo põe 3 caixas no grid de colisão (marcadas com veh): jogadores, inimigos e outros carros batem nele,
 //   e o "olho"/A* dos inimigos desvia dele.
-const spawns = new Map() // key -> { key, kind, c, x, z, ry, done }
-export function RegisterVehicleSpawn(p) {
-  const key = `${Math.round(p.x * 4)},${Math.round(p.z * 4)}`
-  if (spawns.has(key)) return
-  const kind = p.kind || KINDS[Math.floor(hash(Math.round(p.x), Math.round(p.z), 77) * KINDS.length) % KINDS.length]
-  spawns.set(key, { key, kind, c: p.c ?? 0, x: p.x, z: p.z, ry: p.ry || 0, done: false, v: null })
-}
-// largada: um de cada, estacionados na estrada principal (x = 0)
-RegisterVehicleSpawn({ x: 1.6, z: 9, ry: 0.04, kind: 'jeep', c: 0 })
-RegisterVehicleSpawn({ x: -1.6, z: 16, ry: Math.PI - 0.05, kind: 'pickup', c: 0 })
-RegisterVehicleSpawn({ x: 1.6, z: -13, ry: Math.PI + 0.03, kind: 'sedan', c: 1 })
-
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x))
 const damp = (cur, tgt, rate, dt) => cur + (tgt - cur) * (1 - Math.exp(-rate * dt))
 const wrap = (a) => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI }
 const SPAWN_R = 46, DESPAWN_R = 80
+const FORGET_R = 120 // ponto nunca usado e tão longe assim: esquece (o chunk dele já saiu e registra de novo quando voltar)
 const wreckMat = new THREE.MeshLambertMaterial({ vertexColors: true, color: 0x4a4440 })
 
 export function CreateVehicles(scene, fx, wfx) {
   const list = []
   const tmp = { x: 0, z: 0, lv: 0, veh: null }
   let scanT = 0
+
+  // pontos de nascimento: key -> { key, kind, c, x, z, ry, done, v, fixed }
+  const spawns = new Map()
+  function register(p, fixed = false) {
+    const key = `${Math.round(p.x * 4)},${Math.round(p.z * 4)}`
+    if (spawns.has(key)) return
+    const kind = p.kind || KINDS[Math.floor(hash(Math.round(p.x), Math.round(p.z), 77) * KINDS.length) % KINDS.length]
+    spawns.set(key, { key, kind, c: p.c ?? 0, x: p.x, z: p.z, ry: p.ry || 0, done: false, v: null, fixed })
+  }
+  // largada: um de cada, estacionados na estrada principal (x = 0); nunca são esquecidos
+  register({ x: 1.6, z: 9, ry: 0.04, kind: 'jeep', c: 0 }, true)
+  register({ x: -1.6, z: 16, ry: Math.PI - 0.05, kind: 'pickup', c: 0 }, true)
+  register({ x: 1.6, z: -13, ry: Math.PI + 0.03, kind: 'sedan', c: 1 }, true)
 
   function create(s) {
     const d = VEHICLES[s.kind], g = VehicleGeo(s.kind, s.c)
@@ -307,11 +309,14 @@ export function CreateVehicles(scene, fx, wfx) {
 
   return {
     list,
+    register, // o mundo avisou "aqui cabe um carro"
+    get spawnCount() { return spawns.size },
     // pts: posições de quem está jogando (ou o centro do menu)
     update(dt, players, enemies, pts, hooks) {
       if ((scanT -= dt) <= 0) {
         scanT = 0.5
         for (const s of spawns.values()) if (!s.done && !s.v && pts.some((p) => Math.hypot(p.x - s.x, p.z - s.z) < SPAWN_R)) create(s)
+        for (const [k, s] of spawns) if (!s.fixed && !s.done && !s.v && pts.every((p) => Math.hypot(p.x - s.x, p.z - s.z) > FORGET_R)) spawns.delete(k)
         for (const v of [...list]) {
           const far = pts.every((p) => Math.hypot(p.x - v.x, p.z - v.z) > DESPAWN_R)
           v.sleep = far && !v.seats.some(Boolean)

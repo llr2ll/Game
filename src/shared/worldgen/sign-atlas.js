@@ -22,6 +22,12 @@ function init() {
   } catch { canvas = ctx = tex = null }
 }
 export const AtlasTexture = () => { init(); return tex }
+// esquece todas as placas desenhadas (só depois de descarregar todos os chunks: as placas na tela apontam para o atlas)
+export function ResetSignAtlas() {
+  slots.clear()
+  Object.assign(cur.a, { x: 0, y: 0 }); Object.assign(cur.b, { x: 0, y: 1024 })
+  if (ctx) { ctx.clearRect(0, 0, W, H); tex.needsUpdate = true }
+}
 
 // ---------- desenhos ----------
 function fitText(c, text, maxW, size, font = 'system-ui, Arial, sans-serif', weight = 'bold') {

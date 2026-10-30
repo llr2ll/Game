@@ -1,12 +1,13 @@
 import { hash } from '../../engine/world/noise'
 import { ArterialDistV, ArterialDistH, InZone, StationOf, CHUNK_SIZE } from './layout'
 import { ItemsNear } from './town'
+import { LimitedCache } from '../../engine/core/memo'
 
 // Rede elétrica: postes numa grade global de 8 m ao lado das estradas principais (função pura -> chunks vizinhos concordam,
 // então os fios sempre ligam um poste ao próximo e nunca terminam soltos no ar).
 export const POLE_STEP = 8
 export const POLE_SIDE = 4.6
-const cache = new Map()
+const cache = LimitedCache(8000) // postes por trecho de estrada; esquece o que ficou para trás
 
 export function PoleAt(axis, c, k) {
   const key = `${axis}${c},${k}`
@@ -30,7 +31,7 @@ export function PoleAt(axis, c, k) {
 export const Attach = (p, lat, y, base) => (p.ry ? [p.x, base + y, p.z - lat] : [p.x + lat, base + y, p.z])
 
 // cabo de serviço: do poste até a casa mais próxima (se houver uma a menos de 15 m)
-const dropCache = new Map()
+const dropCache = LimitedCache(3000)
 export function PoleDrop(p) {
   const key = `${p.axis}${p.c},${p.k}`
   if (dropCache.has(key)) return dropCache.get(key)

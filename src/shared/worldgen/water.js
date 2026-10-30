@@ -1,5 +1,6 @@
 import { hash, smooth } from '../../engine/world/noise'
 import { GRID, ROW_Z, NodeType, NodeZ, VSeg, StationOf, CHUNK_SIZE } from './layout'
+import { LimitedCache } from '../../engine/core/memo'
 
 // =====================================================================================
 //  Lagos e rios (determinístico: só hash). O mundo é dividido em "células" entre as estradas principais:
@@ -9,7 +10,7 @@ import { GRID, ROW_Z, NodeType, NodeZ, VSeg, StationOf, CHUNK_SIZE } from './lay
 // =====================================================================================
 export const WATER_Y = -0.45 // nível da água (o chão plano das estradas fica em 0)
 
-const cellCache = new Map()
+const cellCache = LimitedCache(2500) // esquece o que ficou para trás
 const ckey = (i, j) => (i + 2048) * 4096 + (j + 2048)
 const isTown = (i, j) => !!NodeType(i, j)
 const cityAround = (i, j) => [[0, 0], [1, 0], [0, 1], [1, 1]].some(([a, b]) => NodeType(i + a, j + b) === 'city')

@@ -1,22 +1,22 @@
 import * as THREE from 'three'
-import { UpdateChunks, ProcessChunkQueue, SetupChunks } from '../../engine/world/chunks'
+import { CreateChunks } from '../../engine/world/chunks'
 import { SetDeepTest } from '../../engine/world/collision'
 import { SetIndoorRoute } from '../../engine/world/pathing'
 import { SetIndoorTest } from '../../engine/audio/engine'
 import { events } from '../../engine/core/events'
 import { StartLoop } from '../../engine/core/loop'
+import { TrimCaches } from '../../engine/core/memo'
 import { PrewarmBuildings, PrewarmStep } from '../../shared/worldgen/buildings'
 import { UpdateBuildings, UpdateDoors, AddBuildings, RemoveBuildings, PointInBuilding, ChaseTarget } from '../../shared/worldgen/buildings-registry'
 import { GenerateChunk } from '../../shared/worldgen/generator'
 import { CHUNK_SIZE } from '../../shared/worldgen/map'
 import { TooDeep } from '../../shared/worldgen/sidewalk'
-import { RegisterVehicleSpawn } from '../../shared/vehicles/vehicles'
 import { Fps } from '../../engine/render/follow'
 import { CreateSplitScreen } from '../../engine/render/splitscreen'
 import { Light } from '../../engine/render/light'
 import { CreateEntityShadows } from '../../engine/render/entity-shadows'
 import { CreateClimate } from '../../shared/worldgen/climate'
-import { CreateStreetLights, AddLamps, RemoveLamps } from '../../shared/worldgen/streetlights'
+import { CreateStreetLights } from '../../shared/worldgen/streetlights'
 import { wind } from '../../engine/render/style'
 import { ConnectHost } from '../../engine/net/host'
 import { CreateGame } from './rules/survival'
@@ -30,17 +30,11 @@ import { sfx, gate } from '../../shared/audio/sfx'
 const SLOT_LABELS = CLASS_ORDER.map((k) => `${CLASSES[k].icon} ${CLASSES[k].name}`) // a vaga define a classe
 const KEYS = { r: 'reload', 1: 'carbine', 2: 'shotgun', 3: 'pistol' } // teclas do Atirador (as outras são padrão do motor)
 
-// O motor e o mundo não conhecem este jogo: aqui o jogo liga as peças (casas, postes, água, carros, sons do mundo).
+// O motor e o mundo não conhecem este jogo: aqui o jogo liga as peças (água, casas, sons do mundo).
 function Wire() {
-  SetupChunks({
-    size: CHUNK_SIZE, generate: GenerateChunk,
-    onLoad: (c) => { AddBuildings(c.userData.buildings); AddLamps(c.userData.lamps) },
-    onUnload: (c) => { RemoveBuildings(c.userData.buildings); RemoveLamps(c.userData.lamps) },
-  })
   SetDeepTest(TooDeep) // água funda bloqueia a passagem
   SetIndoorRoute(ChaseTarget) // zumbis entram pela porta e sobem a escada
   SetIndoorTest(PointInBuilding) // parede no meio abafa o som
-  events.on('vehicle-spot', RegisterVehicleSpawn) // vaga na estrada → carro dirigível
   events.on('door-open', (d) => sfx('dooropen', d))
   events.on('door-close', (d) => sfx('doorclose', d))
   events.on('thunder', (d) => sfx('thunder', d))
@@ -61,6 +55,14 @@ export async function LoadGame() {
   const climate = CreateClimate(scene, Light(scene, renderer)) // dia/noite, chuva, neblina, vento
   const entityShadows = CreateEntityShadows(scene)
   const streetLights = CreateStreetLights(scene) // postes acendem à noite, semáforos trocam de cor
+  // mapa em pedaços: casas e postes entram e saem junto com cada chunk; os caches do mundo esquecem o que ficou para trás
+  // (para recomeçar em outro lugar: game.clear(), chunks.reset(), ResetColliders/ResetBuildings/ResetSignAtlas, streetLights.reset())
+  const chunks = CreateChunks({
+    scene, colliders, size: CHUNK_SIZE, generate: GenerateChunk,
+    onLoad: (c) => { AddBuildings(c.userData.buildings); streetLights.add(c.userData.lamps) },
+    onUnload: (c) => { RemoveBuildings(c.userData.buildings); streetLights.remove(c.userData.lamps) },
+    afterUnload: TrimCaches,
+  })
 
   const split = CreateSplitScreen(renderer, scene)
   const sound = CreateSoundscape() // vento, chuva, água, motores, passos, zumbis… (efeitos soltos: audio/sfx.js)
@@ -111,7 +113,8 @@ export async function LoadGame() {
     onInput: (id, m) => game.setInput(id, m),
     onAct: (id, a) => game.act(id, a),
   })
-  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < 0.24 || climate.time > 0.78 })
+  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < 0.24 || climate.time > 0.78, loaded: chunks.loaded })
+  events.on('vehicle-spot', (p) => game.vehicles.register(p)) // vaga na estrada → carro dirigível
   hud = CreateHud(game, climate)
   BindKeyboard(game, KEYS)
   setInterval(notifyPhones, 1000)
@@ -119,8 +122,8 @@ export async function LoadGame() {
 
   PrewarmBuildings() // enfileira as geometrias das casas; PrewarmStep gera uma por quadro (evita engasgo ao carregar chunks)
   // carrega o entorno inicial de uma vez
-  UpdateChunks(scene, colliders, [{ x: 0, z: 0 }])
-  ProcessChunkQueue(scene, colliders, 999)
+  chunks.update([{ x: 0, z: 0 }])
+  chunks.process(999)
 
   addEventListener('resize', () => {
     const w = gameWindow.offsetWidth, h = gameWindow.offsetHeight
@@ -142,8 +145,8 @@ export async function LoadGame() {
     sound.update(dt, game, climate, streetLights, phase === 'lobby')
     PrewarmStep()
     if (phase === 'lobby') {
-      UpdateChunks(scene, colliders, pts)
-      ProcessChunkQueue(scene, colliders, 2)
+      chunks.update(pts)
+      chunks.process(2)
       // no menu, a câmera gira devagar em volta do posto, de fundo
       orbit += dt * 0.1
       camera.position.set(8 + Math.sin(orbit) * 22, 11, -6 + Math.cos(orbit) * 22)
@@ -155,8 +158,8 @@ export async function LoadGame() {
     } else {
       // uma tela por grupo de jogadores; com a tela dividida cada jogador carrega menos chunks (mantém o FPS)
       const views = split.update(list, dt)
-      UpdateChunks(scene, colliders, pts, views.length > 1 ? 2 : 3)
-      ProcessChunkQueue(scene, colliders, 1)
+      chunks.update(pts, views.length > 1 ? 2 : 3)
+      chunks.process(1)
       hud.update(dt)
       split.render(views, (v) => { UpdateBuildings(v.group.members); climate.view(v.cam) }) // cada tela mostra o andar de quem está nela (telhado some)
     }
