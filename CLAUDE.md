@@ -39,7 +39,7 @@ controller.html           página do celular (controle)
 server/server.js          relay WebSocket: cria sala (4 letras) e só repassa mensagens tela ↔ celulares
 scripts/smoke.mjs         teste automático no navegador sem tela
 smoke/                    capturas + log do último npm run smoke
-docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist)
+docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-DESIGN (proposta de direção criativa)
 src/
   index.js                liga tudo: renderer, clima, lobby, rede, teclado, loop de desenho
   game.js                 REGRAS: jogadores, dano, morte/revive (25 s), suprimentos (75 s), fim de jogo, estado p/ celulares
@@ -114,9 +114,19 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
 - `THREE.Clock` está obsoleto (`src/index.js`) e gera o único aviso do console → trocar por `THREE.Timer` na fundação.
 - `npm audit` acusa falhas em dependências do Vite (nanoid, postcss, source-map-js). Já existiam; não corrigidas (perguntar ao dono antes).
 - Depois do merge do PR "limpeza", `git pull` apaga a pasta `node_modules` (ela saiu do Git) → rodar `npm install` de novo.
+- **Escala das placas:** 1 km de placa = 32 m de jogo (marcos de km a cada 32 m; cada trecho de 64 m entre cruzamentos = "2 km").
+  Os marcos usam |k|, então o km é igual para os dois sentidos da estrada. Cruzamentos: 13% cidade, 29% vila, 58% vazio (`layout.js`).
+- Postos de gasolina só existem na N-550 (estrada x = 0; `StationOf` em `layout.js`). A largada é ao lado do posto do km 0.
+- Velocidades: andar 4,4 m/s, correr 7,6, mirando 3,1 (`player-movement.js`); sedã 23 m/s, picape 20, jipe 19 (`vehicles/models.js`).
+- Raio do barulho que atrai zumbis: tiro 30 m (pistola 22), granada 38, música do Bardo 18, onda 12, dardo 9, katana 7,
+  carro andando 18, correr 8, andar 3. A noite muda visão (16 → 9 m) e quantidade (×1,3). Chuva e neblina não afetam os zumbis.
+- Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
+  guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
+  Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
 
 ## Plano da sessão de fundação (30/10/2026)
-0. Verificação ✓ · 1. PR "limpeza" (este) · 2. `docs/GAME-DESIGN.md` com 3 conceitos e perguntas ao dono · 3. PR "fundação" (só depois das respostas).
+0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (aguardando as decisões da seção 12) · 3. PR "fundação" (só depois das respostas).
+Quando o dono decidir, registre as respostas aqui e no topo de `docs/GAME-DESIGN.md`.
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -128,3 +138,5 @@ Proposta pendente de resposta do dono: dividir a Etapa 3 em 3 PRs (mover pastas 
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **game-design** — `docs/GAME-DESIGN.md`: diagnóstico, 3 conceitos (recomendado: Rota de fuga), partida de 25 min, saque, 24 melhorias,
+  inimigos, progressão, juice, plano do vertical slice e comercial. Só documento.
