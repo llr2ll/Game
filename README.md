@@ -39,7 +39,7 @@ Tudo em `src/characters/classes.js` (vida, recargas, dano) e `src/fx/effects.js`
 - `src/characters/looks.js` – visual de cada classe, uma malha fundida por osso (quadril, tronco, cabeça, coxa, canela, pé, braço, antebraço).
 - `src/characters/player.js` – esqueleto articulado com animação procedural: a passada avança pela distância andada (o pé não escorrega), o quadril vira para onde o corpo anda enquanto o tronco segue a mira (anda de lado e de costas mirando), corrida inclinada com braços "bombeando", inclinação na arrancada/freada e nas curvas, passinhos ao girar parado, respiração e olhar em volta parado, pulo, aterrissagem, nado, queda ao morrer, sentado/dirigindo.
 - `src/characters/kits.js` – o objeto de cada classe (armas, katana, cajado, alaúde) e suas poses por quadros-chave; as mãos chegam às empunhaduras por IK de dois ossos.
-- `src/characters/player-moviment.js` – movimento com peso: o corpo gira com velocidade limitada, mirando anda devagar e não corre, virar de costas correndo freia.
+- `src/characters/player-movement.js` – movimento com peso: o corpo gira com velocidade limitada, mirando anda devagar e não corre, virar de costas correndo freia.
 
 ## Veículos (sedã, picape, jipe)
 Os carros da estrada são dirigíveis por qualquer um dos 4 jogadores (três já esperam na largada). Cima/W acelera, baixo/S freia e depois dá ré, esquerda/direita (A/D) viram o carro para o lado dele. Sedã: rápido no asfalto, 4 lugares fechados. Picape: resistente, 2 na cabine + 2 em pé na caçamba (atiram de lá). Jipe: aberto, melhor fora da estrada. Passageiros das classes de longo alcance atacam do carro; atropelar machuca e derruba zumbis (carro ligado faz barulho e atrai a horda); batidas e ataques estragam o veículo (fumaça → carcaça queimada). Ajustes em `src/vehicles/models.js` (desempenho, bancos) e `src/vehicles/vehicles.js` (física, entrar/sair).
@@ -75,6 +75,5 @@ Cores por vértice + malhas fundidas (poucos draw calls), balanço do vento na G
 
 ## Estradas: finais, desgaste, poças e sinalização
 - `src/world/endings.js` – finais de estrada (obra com escavadeira, rotatória-praça com bancos, mato, mini-praça); cidades vizinhas ligam suas ruas (ver `RoadRects` em `layout.js`).
-- `src/world/roadwear.js` – rachaduras, remendos, marcas de pneu, óleo, bueiros e poças refletivas (decalques planos fundidos por chunk).
-- `src/world/reflections.js` – céu procedural filtrado uma vez (PMREM); só as poças usam esse reflexo.
+- `src/world/roadwear.js` – rachaduras, remendos, marcas de pneu, óleo, bueiros e poças em estilo desenho, sem reflexo de verdade (decalques planos fundidos por chunk).
 - `src/world/signs.js` / `signage.js` / `sign-atlas.js` / `names.js` – placas de rua, PARE, semáforos, faixas de pedestre, entrada de povoado, painéis de direção e marcos de km (textos desenhados num único atlas).

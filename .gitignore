@@ -5,7 +5,4 @@ build/
 .vite/
 .cache/
 
-*.glb
-*.gltf
-
 .DS_Store
