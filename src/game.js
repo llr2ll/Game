@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { CreatePlayerModel } from './characters/player'
-import { UpdatePlayerMovement } from './characters/player-moviment'
+import { UpdatePlayerMovement } from './characters/player-movement'
 import { ClassOf, InitClassState, CreateAbilities } from './characters/classes'
 import { CreateHorde } from './enemies/zombies'
 import { WEAPONS } from './weapons/weapons'
