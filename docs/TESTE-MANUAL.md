@@ -12,8 +12,8 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | # | Teste | O que você deve ver | ✓ |
 |---|---|---|---|
 | 1 | **Menu** abre | 4 vagas (Atirador, Samurai, Mago, Bardo), QR code, código de 4 letras e "Servidor conectado" em verde | ☐ |
-| 2 | **Entrar pelo celular** (QR code) | O celular mostra "Você é o Jogador N". A vaga no PC diz "Celular conectado · pronto" | ☐ |
-| 3 | **Entrar pelo teclado** | Clique "⌨️ Mouse e teclado" numa vaga livre → "pronto". Enter inicia a partida | ☐ |
+| 2 | **Entrar pelo celular** (QR code) e trocar a classe com ◀ ▶ | O celular mostra "Você é o Jogador N" e a classe. Ao tocar ▶, a classe muda no celular e no PC | ☐ |
+| 3 | **Entrar pelo teclado** e trocar a classe com A/D | Clique "⌨️ Mouse e teclado" numa vaga livre → "pronto". A e D trocam a classe. Escolha a mesma do celular: os dois entram iguais, cada um com o anel da sua cor no chão. Enter inicia | ☐ |
 | 4 | **Atirador**: clique atira, 1/2/3 trocam a arma, R recarrega, G joga a granada | Tiros, cápsulas, explosão. Munição muda no placar | ☐ |
 | 5 | **Samurai**: clique faz o combo de 3 golpes, Q investida, F redemoinho | O 3º golpe derruba. A investida atravessa os zumbis | ☐ |
 | 6 | **Mago**: clique solta o dardo, Q meteoro, F nova de gelo | O dardo persegue o zumbi. Barra azul de mana desce e volta | ☐ |
@@ -25,7 +25,7 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | 12 | **Noite**: aperte N várias vezes (+1 hora cada) até 20:00 | O céu escurece, os postes acendem e aparecem mais zumbis | ☐ |
 | 13 | **Esc** durante a partida | Volta ao menu sem travar | ☐ |
 
-Para testar outra classe pelo teclado: Esc → no menu, clique ✕ na sua vaga → escolha "Mouse e teclado" em outra vaga.
+Para testar outra classe pelo teclado: Esc → no menu, aperte A ou D → Enter.
 
 **Sem amigos por perto?** Abra o jogo com `?bots=3` no fim do endereço (ex.: `.../?bots=3`). Três jogadores do computador entram
 nas vagas livres, cada um com sua classe, e seguem você. Aperte **B** para eles se espalharem (a tela divide) e **B** de novo para voltarem

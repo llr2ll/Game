@@ -26,7 +26,8 @@ flowchart LR
 O que acontece quando alguém entra:
 1. A tela abre o jogo e pede uma **sala** ao servidor. O servidor devolve um código de 4 letras (aparece no menu com o QR code).
 2. O celular lê o QR code, abre a página de controle e manda o código. O servidor coloca o celular naquela sala.
-3. A tela recebe "entrou alguém" e ocupa uma vaga no menu. **A vaga define a classe**: 1 Atirador, 2 Samurai, 3 Mago, 4 Bardo.
+3. A tela recebe "entrou alguém" e ocupa uma vaga no menu. Cada um **escolhe a classe** com ◀ ▶ (no celular, no mouse ou com A/D no teclado).
+   Pode repetir classe. A cor da vaga aparece como um anel no chão, sob o jogador, para cada um se achar na tela.
 4. Durante a partida, cada celular manda os sticks ~30 vezes por segundo. A tela devolve vida, botões e recargas ~7 vezes por segundo.
 5. O teclado do PC usa **exatamente o mesmo formato** do celular. Por isso dá para misturar teclado e celulares.
 

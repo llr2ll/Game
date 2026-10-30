@@ -1,5 +1,5 @@
 // Teste de fumaça: compila o jogo, sobe relay + página em portas próprias (não briga com o npm run dev/server),
-// abre num navegador sem tela, entra 1 jogador no teclado (Atirador) e 1 celular simulado (Samurai),
+// abre num navegador sem tela, entra 1 jogador no teclado (Atirador) e 1 celular simulado (troca para Bardo no menu),
 // joga ~60 s e FALHA se aparecer erro no console. Capturas e log ficam em smoke/.
 // Sem placa de vídeo o jogo roda a 1–2 FPS: 60 s reais ≈ 6 s de jogo. Serve para pegar erro de carregar/iniciar/botões.
 import { chromium } from 'playwright'
@@ -135,11 +135,18 @@ try {
   await phone.click('#go')
   await phone.waitForSelector('#pad', { state: 'visible', timeout: 15000 })
   await page.waitForFunction(() => /Celular conectado/.test(document.querySelector('#slots')?.textContent || ''), null, { timeout: 15000 })
+  // escolha de classe: teclado D e A (volta ao Atirador); celular ▶ duas vezes (Samurai → Mago → Bardo)
+  await page.keyboard.press('d'); await page.keyboard.press('a')
+  await phone.waitForSelector('#pick', { state: 'visible', timeout: 15000 })
+  for (let i = 0; i < 2; i++) { await phone.click('#next'); await wait(400) }
+  await page.waitForFunction(() => (document.querySelector('#slots')?.textContent || '').includes('Bardo'), null, { timeout: 15000 }).catch(() => fail('o celular não conseguiu trocar a classe no menu'))
   await page.screenshot({ path: path.join(OUT, '01-lobby.jpg'), type: 'jpeg', quality: 70 })
 
   note(`4/4 jogando ${PLAY_SECONDS} s…`)
   await page.click('#start')
   await page.waitForFunction(() => document.querySelectorAll('#plist .pl').length === 2, null, { timeout: 30000 })
+  const cls = await page.textContent('#plist')
+  if (!cls.includes('🔫 Jogador 1') || !cls.includes('🪕 Celular')) fail(`classes erradas na partida: ${cls.replace(/\s+/g, ' ').slice(0, 120)}`)
   await play(page, phone)
 
   const hud = await page.evaluate(() => ({ topo: document.querySelector('#top')?.innerText, jogadores: document.querySelector('#plist')?.innerText }))

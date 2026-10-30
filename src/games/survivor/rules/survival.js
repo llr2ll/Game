@@ -13,6 +13,7 @@ import { CreateVehicles } from '../../../shared/vehicles/vehicles'
 import { sfx } from '../../../shared/audio/sfx'
 import { ApplyInput } from '../../../engine/input/contract'
 import { BALANCE } from '../config/balance'
+import { PLAYER_COLORS } from '../../../engine/render/splitscreen'
 
 const MAX_PLAYERS = 4
 // números das regras: config/balance.js
@@ -20,6 +21,9 @@ const RU = BALANCE.rules, PL = BALANCE.player
 const REVIVE_T = RU.revive.time, SUPPLY_T = RU.supply.every
 // movimento (shared) com os números deste jogo; a balada do Bardo também acelera
 const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
+// anel da cor da vaga no chão, sob os pés: com classes repetidas, cada um se acha na tela (desenhado depois da sombra)
+const RING_GEO = new THREE.RingGeometry(0.5, 0.68, 28).rotateX(-Math.PI / 2)
+const RING_MAT = PLAYER_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false }))
 
 // hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?) }
 export function CreateGame(scene, colliders, net, hooks = {}) {
@@ -43,15 +47,17 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   }
   const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise: horde.noise })
 
-  // slot = vaga escolhida no lobby: define a classe (1 Atirador · 2 Samurai · 3 Mago · 4 Bardo) e o ponto de largada
-  function addPlayer(id, name, slot) {
+  // slot = vaga do lobby: cor e ponto de largada · choice = classe escolhida (0 Atirador · 1 Samurai · 2 Mago · 3 Bardo; sem escolha = a da vaga)
+  function addPlayer(id, name, slot, choice) {
     if (players.has(id) || players.size >= MAX_PLAYERS) return
     const idx = slot ?? players.size
-    const cls = ClassOf(idx)
+    const cls = ClassOf(choice ?? idx)
     const model = CreatePlayerModel(cls.id)
-    scene.add(model.root)
+    const ring = new THREE.Mesh(RING_GEO, RING_MAT[idx % 4])
+    ring.renderOrder = 2
+    scene.add(model.root, ring)
     const p = {
-      id, name, idx, cls, model, x: (idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, aimAngle: Math.PI, facing: Math.PI, turn: 0, speed: 0, aiming: false, firing: false,
+      id, name, idx, cls, model, ring, x: (idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, aimAngle: Math.PI, facing: Math.PI, turn: 0, speed: 0, aiming: false, firing: false,
       jy: 0, vy: 0, gy: 0, y: 0, lv: 0, stamina: 100, tired: false, running: false, cool: 0, kills: 0, lastIn: performance.now(),
       dead: false, vehicle: null, seat: null, pad: 0, hurtCar: 0, held: 0, struggle: 0, shoveCd: 0, reviveT: 0,
       input: { mx: 0, mz: 0, ax: 0, az: 0, run: 0 },
@@ -65,7 +71,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     if (!p) return
     if (p.vehicle) vehicles.exit(p, true)
     horde.releasePlayer(p)
-    scene.remove(p.model.root)
+    scene.remove(p.model.root, p.ring)
     players.delete(id)
   }
   function setInput(id, m) {
@@ -174,7 +180,11 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     // zumbis e veículos
     const list = [...players.values()]
     vehicles.update(dt, list, enemies, list.length ? list : [{ x: 0, z: 0 }], { hit })
-    for (const p of list) p.model.animate(dt, p) // depois dos veículos: quem está sentado já tem a posição do banco
+    for (const p of list) { // depois dos veículos: quem está sentado já tem a posição do banco
+      p.model.animate(dt, p)
+      p.ring.visible = !p.vehicle
+      p.ring.position.set(p.x, (p.y || 0) - (p.jy || 0) + 0.1, p.z) // no chão, mesmo pulando
+    }
     wfx.update(dt, list.filter((p) => !p.vehicle), enemies)
     if (players.size) horde.update(dt)
     abilities.update(dt)

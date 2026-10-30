@@ -36,6 +36,7 @@ body.in-lobby #hud { display: none }
 .slot button:hover:not(:disabled), #start:hover:not(:disabled) { background: #fff4 }
 .slot button:disabled { opacity: .35; cursor: not-allowed }
 .slot .x { position: absolute; top: 6px; right: 6px; padding: 2px 8px; background: #0006 }
+.slot .pk { padding: 0 7px; margin: 0 4px; font-size: 12px }
 .slot input { font: inherit; font-weight: 700; font-size: 18px; background: #0006; color: #fff; border: 1px solid #fff3; border-radius: 6px; padding: 6px 8px; width: calc(100% - 34px) }
 .slot .st { font-size: 14px; opacity: .85 } .slot .st.wait { color: #ffcf9a }
 #start { font-size: 20px; padding: 14px; background: #c85b72 } #start:disabled { background: #fff2; opacity: .6; cursor: not-allowed }

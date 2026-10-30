@@ -29,7 +29,7 @@ import { BindKeyboard } from '../../engine/input/keyboard'
 import { CreateSoundscape } from '../../shared/audio/soundscape'
 import { sfx, gate } from '../../shared/audio/sfx'
 
-const SLOT_LABELS = CLASS_ORDER.map((k) => `${CLASSES[k].icon} ${CLASSES[k].name}`) // a vaga define a classe
+const CLASS_LABELS = CLASS_ORDER.map((k) => `${CLASSES[k].icon} ${CLASSES[k].name}`) // cada vaga escolhe uma (◀ ▶ no menu); repetir pode
 const KEYS = { r: 'reload', 1: 'carbine', 2: 'shotgun', 3: 'pistol' } // teclas do Atirador (as outras são padrão do motor)
 // ?bots=1..3 na URL: jogadores controlados pelo computador, só para teste (bots.js)
 const BOTS = Math.min(3, Math.max(0, parseInt(new URLSearchParams(location.search).get('bots'), 10) || 0))
@@ -77,7 +77,7 @@ export async function LoadGame() {
   function notifyPhones() {
     if (phase !== 'lobby' || !net) return
     const list = lobby.entries()
-    for (const e of list) if (e.type === 'phone') net.send(e.id, { t: 'lobby', slot: e.slot + 1, total: list.length })
+    for (const e of list) if (e.type === 'phone') net.send(e.id, { t: 'lobby', slot: e.slot + 1, total: list.length, pick: CLASS_LABELS[e.choice] })
   }
   function toLobby() {
     sound.clear()
@@ -95,12 +95,12 @@ export async function LoadGame() {
       sfx('start')
       split.reset()
       lobby.hide()
-      for (const e of entries) game.addPlayer(e.id, e.name, e.slot)
+      for (const e of entries) game.addPlayer(e.id, e.name, e.slot, e.choice)
       if (BOTS) bots.add([0, 1, 2, 3].filter((s) => !entries.some((e) => e.slot === s))) // bots nas vagas livres
     },
     onKick: (id) => net.send(id, { t: 'kick', msg: 'Você foi removido da sala' }),
     onChange: notifyPhones,
-    labels: SLOT_LABELS, sound: sfx, subtitle: 'Sobreviva aos zumbis · até 4 jogadores',
+    choices: CLASS_LABELS, sound: sfx, subtitle: 'Sobreviva aos zumbis · até 4 jogadores',
   })
 
   net = ConnectHost({
@@ -113,11 +113,12 @@ export async function LoadGame() {
     onJoin: (id, name) => {
       const slot = lobby.addPhone(id, name)
       if (slot < 0) return net.send(id, { t: 'kick', msg: 'Sala cheia' })
-      if (phase === 'playing') game.addPlayer(id, name, slot) // entrada tardia: já nasce na partida
+      if (phase === 'playing') game.addPlayer(id, name, slot, lobby.entries().find((e) => e.id === id)?.choice) // entrada tardia: já nasce na partida
     },
     onLeave: (id) => { lobby.removeId(id); game.removePlayer(id) },
     onInput: (id, m) => game.setInput(id, m),
-    onAct: (id, a) => game.act(id, a),
+    // no menu, o celular só troca a classe (◀ ▶); na partida, as ações vão para o jogo
+    onAct: (id, a) => (phase === 'lobby' ? lobby.pick(id, a === 'prev' ? -1 : a === 'next' ? 1 : 0) : game.act(id, a)),
   })
   game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < BALANCE.day.nightTo || climate.time > BALANCE.day.nightFrom, loaded: chunks.loaded })
   events.on('vehicle-spot', (p) => game.vehicles.register(p)) // vaga na estrada → carro dirigível

@@ -37,7 +37,7 @@ Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesm
      (o Vite e o Three.js também sorteiam, e isso mudaria com a ordem dos arquivos). `SIM_TRACE=arquivo node scripts/sim.mjs` grava o rastro
      quadro a quadro para achar onde dois replays se separam.
 - `npm run smoke` — teste automático (~3 min). Compila o jogo, sobe relay **8099** e página **5199** (não briga com o dev/server do dono),
-  abre no Chromium sem tela, entra 1 teclado (Atirador) + 1 celular simulado (Samurai), joga 60 s (anda, atira, habilidades, carro, noite),
+  abre no Chromium sem tela, entra 1 teclado (Atirador; aperta D e A no menu) + 1 celular simulado (troca para Bardo com ▶ ▶), confere as classes, joga 60 s (anda, atira, habilidades, carro, noite),
   aperta Esc e confere a volta ao menu. **Falha se aparecer qualquer `console.error` ou erro de página.** Capturas e log em `smoke/` (versionados: o PR mostra as capturas).
   Script: `scripts/smoke.mjs`. Sem GPU o jogo roda a 1–2 FPS → 60 s reais ≈ 6 s de jogo. Pega erro de carregar/iniciar/botões, não bugs de longo prazo.
 - `docs/TESTE-MANUAL.md` — checklist de 5 min que o dono roda depois de cada PR (inclui anotar FPS). Peça para ele rodar.
@@ -63,7 +63,7 @@ src/engine/               genérico
   audio/engine.js         Web Audio: barramentos, primitivas, som posicional
   world/                  noise.js (hash/ruído), collision.js (grade de colisão), chunks.js (carrega/descarrega chunks),
                           pathing.js (desvio, A*, rota dentro de casas) — chunks.js é instância (CreateChunks)
-  ui/lobby.js             menu de 4 vagas (celular ou teclado); textos e sons vêm do jogo
+  ui/lobby.js             menu de 4 vagas (celular ou teclado); cada vaga escolhe uma opção com ◀ ▶ (choices vêm do jogo)
 src/shared/               peças prontas
   characters/             player.js (esqueleto/animação), looks.js (visual), kits.js (armas + IK), player-movement.js
   creatures/zombie-model.js  humanoide articulado (12 variações), base dos zumbis
@@ -77,7 +77,7 @@ src/games/survivor/       este jogo
   main.js                 liga tudo: renderer, clima, lobby, rede, teclado, loop; Wire() conecta motor ↔ mundo ↔ sons
   config/balance.js       TODOS os números ajustáveis (classes, armas, habilidades, zumbis, regras, dia), comentados em português
   config/weapons.js       nomes e ordem das armas (números vêm do balance.js)
-  rules/survival.js       REGRAS: jogadores, dano, morte/revive, suprimentos, fim de jogo, estado p/ celulares
+  rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, suprimentos, fim de jogo
   abilities/classes.js    as 4 classes e suas habilidades
   bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
   enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
@@ -87,7 +87,7 @@ src/games/survivor/       este jogo
 **Como as camadas conversam sem import subindo** (ligado em `games/survivor/main.js`):
 - Avisos (`engine/core/events.js`): o mundo emite `door-open`, `door-close`, `thunder`, `splash`, `vehicle-spot`; o jogo decide o som/carro.
 - Funções passadas ao motor: `CreateChunks({ scene, colliders, size, generate, onLoad, onUnload, afterUnload })`, `SetDeepTest` (água funda),
-  `SetIndoorRoute` (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `labels`, `sound`, `subtitle`. Teclado, as teclas extras.
+  `SetIndoorRoute` (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `choices`, `sound`, `subtitle`. Teclado, as teclas extras.
 - `shared` pode importar `shared` (ex.: `creatures/zombie-model` usa `SoleDepth` de `characters/player`; `fx/gore` usa `worldgen`).
 
 **Estado e memória (F2)** — o que é instância e o que continua único:
@@ -116,6 +116,8 @@ Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - `game.act(id, ação)` — `b1` `b2` `b3` (botões da classe) · `shove` · `use` (carro) · `jump` · `reload` · `swap` · `carbine` `shotgun` `pistol`.
 - Celular → relay: `{t:'join', code, name}`, `{t:'in', mx, mz, ax, az, run}` a cada 33 ms, `{t:'act', a}`.
 - Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
+- No menu: celular manda `{t:'act', a:'prev'|'next'}` para trocar a classe (o `main.js` manda para `lobby.pick` só na fase de menu);
+  a tela manda `{t:'lobby', slot, total, pick}` (pick = texto da classe escolhida). `game.addPlayer(id, nome, vaga, classe)`.
 - Jogador do teclado tem id `'local'`. Bots de teste têm id `bot1`…`bot3` e usam o mesmo contrato (`games/survivor/bots.js`).
 
 ## Decisões tomadas (não reabra sem perguntar ao dono)
@@ -151,7 +153,7 @@ Título claro + descrição com:
 - Risco e como desfazer
 
 ## Proibido nesta fase (até o dono liberar)
-Não mudar regras de jogo. Não criar classes, armas, inimigos, itens ou missões. Não separar classe da vaga ainda.
+Só mudar regras de jogo nos PRs J1…J14 aprovados pelo dono (um por vez). Não criar classes, armas, inimigos, itens ou missões fora desse plano.
 Não implementar online com uma tela por jogador. Não mexer na câmera. Não migrar para TypeScript. Não criar sistema Entity/Component. Não publicar nada.
 
 ## Fatos que não são óbvios no código
@@ -192,6 +194,8 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j1-escolher-classe (J1)** — classe escolhida no menu (◀ ▶; A/D no teclado; ◀ ▶ na espera do celular), classes repetidas permitidas;
+  anel da cor da vaga no chão sob cada jogador + faixa da cor no placar. Quem não troca joga igual (replay igual). Smoke troca classes no menu.
 - **correcao-placas** — atlas de placas com células fixas e contagem de quem usa cada texto. Antes: 1.813 placas montadas com texto
   errado em 8 km de estrada (2.590 com tela em 4). Depois: 0 (simulação com o atlas real; tela em 4: 109 em branco). Só visual: mundo e replay iguais.
 - **fundacao-balanco (F3)** — `config/balance.js` com todos os números (classes, armas, habilidades, zumbis, regras, dia);

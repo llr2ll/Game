@@ -38,6 +38,7 @@ body.in-lobby #hud { display: none }
 .slot button:hover:not(:disabled), #start:hover:not(:disabled) { background: #fff4 }
 .slot button:disabled { opacity: .35; cursor: not-allowed }
 .slot .x { position: absolute; top: 6px; right: 6px; padding: 2px 8px; background: #0006 }
+.slot .pk { padding: 0 7px; margin: 0 4px; font-size: 12px }
 .slot input { font: inherit; font-weight: 700; font-size: 18px; background: #0006; color: #fff; border: 1px solid #fff3; border-radius: 6px; padding: 6px 8px; width: calc(100% - 34px) }
 .slot .st { font-size: 14px; opacity: .85 } .slot .st.wait { color: #ffcf9a }
 #start { font-size: 20px; padding: 14px; background: #c85b72 } #start:disabled { background: #fff2; opacity: .6; cursor: not-allowed }
@@ -59,18 +60,28 @@ function ensureDom(sub) {
 }
 
 // Menu inicial: 4 vagas; cada vaga é "Celular" (entra pelo QR/código) ou "Mouse e teclado" (jogador local).
-// O jogo passa: labels = texto de cada vaga (ex.: a classe) · sound(nome, opções) = som da interface · subtitle = frase do menu
-export function CreateLobby({ onStart, onKick, onChange, labels = ['', '', '', ''], sound = () => {}, subtitle = '' }) {
+// O jogo passa: choices = opções que cada vaga pode escolher com ◀ ▶ (ex.: as classes; a vaga N começa na opção N)
+// · sound(nome, opções) = som da interface · subtitle = frase do menu.
+// Trocar a opção: setas na vaga (mouse), A/D ou ←/→ (teclado, na vaga do teclado), pick(id, ±1) (celular, via jogo).
+export function CreateLobby({ onStart, onKick, onChange, choices = [], sound = () => {}, subtitle = '' }) {
   ensureDom(subtitle)
-  const slots = [null, null, null, null] // { type: 'phone' | 'kb', id, name }
+  const slots = [null, null, null, null] // { type: 'phone' | 'kb', id, name, choice }
   let code = ''
   const el = $('#lobby'), box = $('#slots')
   const hasKb = () => slots.some((s) => s && s.type === 'kb')
-  const entries = () => slots.map((s, i) => (s && s.id ? { slot: i, id: s.id, name: s.name, type: s.type } : null)).filter(Boolean)
+  const pickOf = (i) => (slots[i] && slots[i].choice !== undefined ? slots[i].choice : i % Math.max(1, choices.length))
+  const entries = () => slots.map((s, i) => (s && s.id ? { slot: i, id: s.id, name: s.name, type: s.type, choice: pickOf(i) } : null)).filter(Boolean)
+  function cycle(i, d) {
+    if (!slots[i] || !choices.length || !d) return
+    slots[i].choice = (pickOf(i) + d + choices.length) % choices.length
+    render(); onChange()
+  }
 
   function render() {
     box.innerHTML = slots.map((s, i) => {
-      const head = `<div class="slot" style="--c:${COLORS[i]}"><div class="sn">JOGADOR ${i + 1} · <span style="color:${COLORS[i]}">${labels[i]}</span></div>`
+      const arrow = (a, t) => (s && choices.length > 1 ? `<button class="pk" data-a="${a}" data-i="${i}" title="Trocar">${t}</button>` : '')
+      const label = choices.length ? choices[pickOf(i)] : ''
+      const head = `<div class="slot" style="--c:${COLORS[i]}"><div class="sn">JOGADOR ${i + 1} · ${arrow('prev', '◀')}<span style="color:${COLORS[i]}">${label}</span>${arrow('next', '▶')}</div>`
       if (!s) {
         return `${head}<div class="opts"><button data-a="phone" data-i="${i}">📱 Celular</button><button data-a="kb" data-i="${i}" ${hasKb() ? 'disabled title="Só um jogador pode usar mouse e teclado"' : ''}>⌨️ Mouse e teclado</button></div></div>`
       }
@@ -88,7 +99,8 @@ export function CreateLobby({ onStart, onKick, onChange, labels = ['', '', '', '
     const b = e.target.closest('button[data-a]')
     if (!b) return
     const i = +b.dataset.i, a = b.dataset.a
-    sound('ui', { f: a === 'del' ? 520 : 880 })
+    sound('ui', { f: a === 'del' ? 520 : a === 'prev' || a === 'next' ? 700 : 880 })
+    if (a === 'prev' || a === 'next') return cycle(i, a === 'prev' ? -1 : 1)
     if (a === 'phone' && !slots[i]) slots[i] = { type: 'phone', id: null, name: '' }
     else if (a === 'kb' && !slots[i] && !hasKb()) slots[i] = { type: 'kb', id: 'local', name: `Jogador ${i + 1}` }
     else if (a === 'del') {
@@ -104,7 +116,14 @@ export function CreateLobby({ onStart, onKick, onChange, labels = ['', '', '', '
   })
   const start = () => { const list = entries(); if (list.length && !el.classList.contains('hidden')) onStart(list) }
   $('#start').addEventListener('click', start)
-  addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') start() })
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') return start()
+    // teclado troca a opção da própria vaga
+    if (el.classList.contains('hidden') || e.target.tagName === 'INPUT' || e.repeat) return
+    const k = e.key.toLowerCase(), d = k === 'a' || k === 'arrowleft' ? -1 : k === 'd' || k === 'arrowright' ? 1 : 0
+    const i = slots.findIndex((s) => s && s.type === 'kb')
+    if (d && i >= 0) { sound('ui', { f: 700 }); cycle(i, d) }
+  })
 
   render()
   return {
@@ -125,7 +144,7 @@ export function CreateLobby({ onStart, onKick, onChange, labels = ['', '', '', '
       let i = slots.findIndex((s) => s && s.type === 'phone' && !s.id)
       if (i < 0) i = slots.findIndex((s) => !s)
       if (i < 0) return -1
-      slots[i] = { type: 'phone', id, name: (name || '').slice(0, 12) || `Jogador ${i + 1}` }
+      slots[i] = { type: 'phone', id, name: (name || '').slice(0, 12) || `Jogador ${i + 1}`, choice: slots[i] ? slots[i].choice : undefined }
       sound('join')
       render(); onChange()
       return i
@@ -133,6 +152,11 @@ export function CreateLobby({ onStart, onKick, onChange, labels = ['', '', '', '
     removeId(id) {
       const i = slots.findIndex((s) => s && s.id === id)
       if (i >= 0) { slots[i] = null; render(); onChange() }
+    },
+    // celular pediu para trocar a opção (d = -1 ou 1)
+    pick(id, d) {
+      const i = slots.findIndex((s) => s && s.id === id)
+      if (i >= 0 && d) { sound('ui', { f: 700 }); cycle(i, d) }
     },
     resetPhones() { slots.forEach((s, i) => { if (s && s.type === 'phone') slots[i] = null }); render() },
   }

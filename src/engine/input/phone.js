@@ -28,16 +28,18 @@ $('#go').onclick = () => {
       document.documentElement.requestFullscreen?.().catch(() => {})
       screen.orientation?.lock?.('landscape').catch(() => {})
     } else if (m.t === 'error') $('#err').textContent = m.msg
-    else if (m.t === 'state') onState(m)
+    else if (m.t === 'state') { showPick(''); onState(m) }
     else if (m.t === 'hit') navigator.vibrate?.(120)
-    else if (m.t === 'lobby') showState(`Você é o Jogador ${m.slot}\nAguardando o host iniciar… (${m.total} na sala)`)
-    else if (m.t === 'kick') { kicked = true; showState(m.msg || 'Removido da sala'); ws.close() }
-    else if (m.t === 'closed') showState('Jogo encerrado')
+    else if (m.t === 'lobby') { showState(`Você é o Jogador ${m.slot}\nAguardando o host iniciar… (${m.total} na sala)`); showPick(m.pick || '') }
+    else if (m.t === 'kick') { kicked = true; showPick(''); showState(m.msg || 'Removido da sala'); ws.close() }
+    else if (m.t === 'closed') { showPick(''); showState('Jogo encerrado') }
   }
   ws.onclose = () => { if (!kicked && $('#pad').style.display === 'block') showState('Desconectado — recarregue a página') }
 }
 
 function showState(t) { const s = $('#state'); s.textContent = t; s.style.display = t ? 'block' : 'none' }
+// na espera do menu: ◀ opção ▶ (o jogo manda o texto, ex.: a classe; vazio = esconde)
+function showPick(t) { $('#pickname').textContent = t; $('#pick').style.display = t ? 'flex' : 'none' }
 
 function onState(m) {
   $('#hp i').style.width = `${(m.hp / m.max) * 100}%`
@@ -97,7 +99,7 @@ function Stick(zone, cb) {
 Stick($('#zl'), (x, y) => { input.mx = x; input.mz = y })
 Stick($('#zr'), (x, y) => { input.ax = x; input.az = y })
 
-for (const [id, a] of [['#b1', 'b1'], ['#b2', 'b2'], ['#b3', 'b3'], ['#use', 'use']]) {
+for (const [id, a] of [['#b1', 'b1'], ['#b2', 'b2'], ['#b3', 'b3'], ['#use', 'use'], ['#prev', 'prev'], ['#next', 'next']]) {
   $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a }); navigator.vibrate?.(15) })
 }
 

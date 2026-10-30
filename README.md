@@ -20,7 +20,7 @@ Teste sem celular: WASD + mouse (clique esquerdo ataca, direito só mira), E ent
 Testar sozinho com 4 classes: abra o jogo com **`?bots=3`** no fim do endereço (3 jogadores do computador ocupam as vagas livres; tecla **B** espalha/junta, para ver a tela dividida). Só para teste.
 
 ## Controles do celular
-Stick esquerdo = mover (ou dirigir) · stick direito = mirar (ataca enquanto inclinado) · botões da classe (nome e recarga vêm do jogo) · 🚗 aparece perto de um veículo (Entrar/Sair) · Correr · Pular · **Empurrar** (pisca quando um zumbi agarra).
+Na espera do menu: **◀ ▶** trocam a classe. Na partida: stick esquerdo = mover (ou dirigir) · stick direito = mirar (ataca enquanto inclinado) · botões da classe (nome e recarga vêm do jogo) · 🚗 aparece perto de um veículo (Entrar/Sair) · Correr · Pular · **Empurrar** (pisca quando um zumbi agarra).
 
 ## Zumbis (estilo Project Zomboid)
 Sem ondas: a partida é sobrevivência sem fim (o relógio conta o tempo vivo). IA em `src/games/survivor/enemies/`, modelo em `src/shared/creatures/`, caminhos em `src/engine/world/`:
@@ -32,8 +32,10 @@ Sem ondas: a partida é sobrevivência sem fim (o relógio conta o tempo vivo). 
 - `pathing.js` – desvio de obstáculos, A* quando trava, portas e escadas das casas.
 - Quem cai volta em 25 s ao lado de um aliado vivo (a canção do bardo revive na hora). Suprimentos de munição a cada 75 s. Fim de jogo quando todos caem.
 
-## Classes (a vaga define a classe)
-| Vaga | Classe | Ataque (stick direito) | Botões |
+## Classes (cada jogador escolhe no menu; repetir pode)
+Cada vaga começa numa classe (1 Atirador, 2 Samurai, 3 Mago, 4 Bardo) e troca com ◀ ▶. A cor da vaga vira um anel no chão sob o jogador.
+
+| Vaga inicial | Classe | Ataque (stick direito) | Botões |
 |---|---|---|---|
 | 1 | 🔫 Atirador | carabina / espingarda / pistola | Trocar arma · Recarregar · Granada |
 | 2 | ⚔️ Samurai (130 PV) | combo de katana em 3 golpes (o 3º é pesado) | Investida (atravessa cortando, invulnerável) · Redemoinho |
@@ -64,7 +66,7 @@ Todo som é sintetizado na hora com Web Audio (osciladores, ruído, filtros e co
 3. Defina `VITE_WS_URL=wss://seu-servidor.exemplo.com` antes do build.
 
 ## Menu inicial (lobby)
-Ao abrir o jogo aparece o menu com 4 vagas. Em cada vaga escolha **📱 Celular** (o jogador entra pelo QR code/código) ou **⌨️ Mouse e teclado** (só uma vaga). Quem entra pelo celular já ocupa uma vaga sozinho. **Enter** inicia; **Esc** durante a partida (ou o fim de jogo) volta ao menu.
+Ao abrir o jogo aparece o menu com 4 vagas. Em cada vaga escolha **📱 Celular** (o jogador entra pelo QR code/código) ou **⌨️ Mouse e teclado** (só uma vaga). Quem entra pelo celular já ocupa uma vaga sozinho. Cada vaga ocupada mostra **◀ classe ▶**: troque com o mouse, com **A/D** (ou ←/→) no teclado, ou com ◀ ▶ na tela de espera do celular. **Enter** inicia; **Esc** durante a partida (ou o fim de jogo) volta ao menu.
 
 ## Split screen
 Jogadores perto (< 13 unidades) dividem uma tela só; ao se afastar (> 19) ela se divide. Layout pelo número de telas: 2 = linha vertical · 3 = duas em cima + uma embaixo · 4 = 2x2. Quem cai assiste pela tela do grupo vivo mais próximo. Ajustes em `src/engine/render/splitscreen.js` (`MERGE`, `SPLIT`, `GAP`).
