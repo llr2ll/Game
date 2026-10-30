@@ -1,12 +1,12 @@
 [0s] 1/4 compilando o jogo…
 [1s] 2/4 subindo relay e página…
 [2s] 3/4 abrindo o jogo no navegador sem tela…
-[9s]    sala RMUH aberta no relay
-[83s] 4/4 jogando 60 s…
-[126s]    captura 02-inicio.jpg
-[179s]    captura 03-acao.jpg
-[201s]    captura 04-noite.jpg
-[222s]    captura 05-fim.jpg
-[235s]    HUD: {"topo":"⏱ 00:05 · 🧟 24\nPontos 0\n🌙 19:30 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 4s\n🪕 Celular · Alaúde · 0 abates\nCanção de cura 9s"}
+[9s]    sala ZAKH aberta no relay
+[80s] 4/4 jogando 60 s…
+[122s]    captura 02-inicio.jpg
+[175s]    captura 03-acao.jpg
+[203s]    captura 04-noite.jpg
+[220s]    captura 05-fim.jpg
+[235s]    HUD: {"topo":"⏱ 00:05 · 🧟 24\nPontos 0\n🌙 19:30 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 3s\n🪕 Celular · Alaúde · 0 abates\nCanção de cura 9s"}
 
 PASSOU
