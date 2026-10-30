@@ -24,6 +24,7 @@ export function Fps() {
   const now = performance.now()
   if (now - lastTime >= 1000) {
     el.textContent = `FPS: ${frames}`
+    window.dispatchEvent(new CustomEvent('fps', { detail: frames }))
     frames = 0
     lastTime = now
   }

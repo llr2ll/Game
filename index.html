@@ -9,8 +9,24 @@
   <body>
     <div id="fps-element"></div>
     <div id="root-window"><div id="render-target"></div></div>
+    <div id="lobby">
+      <div class="lb-main">
+        <h1>GAME</h1>
+        <p class="sub">Sobreviva aos zumbis · até 4 jogadores</p>
+        <div id="slots"></div>
+        <button id="start" disabled>Adicione um jogador para iniciar</button>
+        <small>Escolha o controle de cada jogador · Enter inicia · Esc volta ao menu durante a partida</small>
+      </div>
+      <div class="lb-side">
+        <canvas id="qr2" width="180" height="180"></canvas>
+        <div id="code2">----</div>
+        <div id="url2"></div>
+        <div id="net">Conectando ao servidor…</div>
+        <small>No celular: escaneie o QR code. Quem entrar já ocupa uma vaga.</small>
+      </div>
+    </div>
     <div id="hud">
-      <div id="top"><span id="wave"></span><span id="score"></span></div>
+      <div id="top"><span id="wave"></span><span id="score"></span><span id="clock"></span></div>
       <div id="plist"></div>
       <div id="room">
         <canvas id="qr" width="130" height="130"></canvas>
@@ -19,7 +35,7 @@
         <small>No celular: escaneie ou abra o link</small>
       </div>
       <div id="msg"></div>
-      <div id="help">PC (teste): WASD mover · mouse mirar/atirar · 1 pistola · 2 carabina · R recarregar · H esconde sala</div>
+      <div id="help">PC (teste): WASD mover/dirigir · clique esquerdo ataca · direito só mira · Shift correr · Espaço pular · E entra/sai do veículo · Q F G habilidades · 1 2 3 armas · R recarregar · Esc menu · T desfoque · H esconde sala · N +1 hora · K muda o tempo · M som liga/desliga</div>
     </div>
     <script type="module">
       import { LoadGame } from './src/index.js'

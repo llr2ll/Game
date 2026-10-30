@@ -1,4 +1,8 @@
-// Colisores são caixas no plano XZ: { x, z, hw, hd, h? }  (h = altura do topo; sem h = intransponível)
+import { TooDeep } from './sidewalk'
+// Colisores são caixas no plano XZ: { x, z, hw, hd, h?, lv?, door?, off? }
+//  h = altura do topo (sem h = intransponível)   lv = só vale para quem está naquele andar da casa
+//  door = porta (off = aberta, não bloqueia; o "olho"/A* dos inimigos ignora portas porque elas abrem sozinhas)
+//  veh = caixa de um veículo (dinâmica: o veículo tira e põe a cada quadro); o próprio veículo não colide com ela
 // Ficam num grid espacial para consultas rápidas.
 const CELL = 4
 const grid = new Map()
@@ -35,7 +39,9 @@ function forNear(x, z, r, fn) {
 // Empurra um círculo (obj.x/obj.z, raio r) para fora das caixas.
 // feet = altura dos pés acima do chão: obstáculos baixos (cerca, tronco, pedra) deixam de bloquear quando se pula por cima.
 export function resolve(obj, r, _colliders, feet = 0) {
+  const lv = obj.lv || 0
   forNear(obj.x, obj.z, r, (c) => {
+    if (c.off || (c.lv !== undefined && c.lv !== lv) || (c.veh && c.veh === obj.veh)) return
     if (c.h !== undefined && feet >= c.h - 0.02) return
     const nx = Math.max(c.x - c.hw, Math.min(obj.x, c.x + c.hw))
     const nz = Math.max(c.z - c.hd, Math.min(obj.z, c.z + c.hd))
@@ -54,10 +60,11 @@ export function resolve(obj, r, _colliders, feet = 0) {
 }
 
 // Tem algum obstáculo (de chão) neste ponto, considerando um círculo de raio r?
-export function Blocked(x, z, r) {
+export function Blocked(x, z, r, lv = 0) {
+  if (TooDeep(x, z)) return true
   let hit = false
   forNear(x, z, r, (c) => {
-    if (hit) return
+    if (hit || c.door || (c.lv !== undefined && c.lv !== lv)) return
     const nx = Math.max(c.x - c.hw, Math.min(x, c.x + c.hw)), nz = Math.max(c.z - c.hd, Math.min(z, c.z + c.hd))
     if ((x - nx) ** 2 + (z - nz) ** 2 < r * r) hit = true
   })
@@ -75,4 +82,24 @@ export function rayBox(ox, oz, dx, dz, c) {
     if (t0 > t1) return Infinity
   }
   return t0
+}
+
+// Parede alta neste ponto? (projéteis mágicos: ignoram água e obstáculos baixos, que passam por cima)
+export function HitWall(x, z, lv = 0) {
+  let hit = false
+  forNear(x, z, 0.1, (c) => {
+    if (hit || c.off || c.veh || (c.lv !== undefined && c.lv !== lv) || (c.h !== undefined && c.h < 1.2)) return
+    if (Math.abs(x - c.x) < c.hw && Math.abs(z - c.z) < c.hd) hit = true
+  })
+  return hit
+}
+
+// Caixa de parede/obstáculo fixo neste ponto (o sangue gruda nela); h = altura do topo, null se não tem
+export function WallAt(x, z, lv = 0) {
+  let hit = null
+  forNear(x, z, 0.1, (c) => {
+    if (hit || c.off || c.veh || (c.lv !== undefined && c.lv !== lv)) return
+    if (Math.abs(x - c.x) < c.hw && Math.abs(z - c.z) < c.hd) hit = c
+  })
+  return hit
 }

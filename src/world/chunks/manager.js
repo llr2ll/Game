@@ -1,38 +1,58 @@
 import { GenerateChunk } from './generator'
 import { CHUNK_SIZE } from '../seed/map'
 import { AddColliders, RemoveColliders } from '../collision'
+import { AddBuildings, RemoveBuildings } from '../buildings-registry'
+import { AddLamps, RemoveLamps } from '../streetlights'
 
 const chunks = new Map()
 const queue = new Map()
 const VIEW_DISTANCE = 3
 
 const id = (x, z) => `${x},${z}`
+// o chunk deste ponto já está carregado (tem colisores e casas)? zumbis só nascem/ficam onde está
+export const ChunkLoaded = (x, z) => chunks.has(id(Math.floor((x + 0.5) / CHUNK_SIZE), Math.floor((z + 0.5) / CHUNK_SIZE)))
 
 // positions: lista de {x, z} (todos os jogadores) — carrega o entorno de cada um
-export function UpdateChunks(scene, colliders, positions) {
+// radius = quantos chunks ao redor de cada jogador (menor com a tela dividida: cada tela mostra menos mundo)
+let lastKey = ''
+export function UpdateChunks(scene, colliders, positions, radius = VIEW_DISTANCE) {
+  // só recalcula quando alguém muda de chunk (evita alocar centenas de strings por frame)
+  let key = radius + ':'
+  for (const p of positions) key += Math.floor((p.x + 0.5) / CHUNK_SIZE) + ',' + Math.floor((p.z + 0.5) / CHUNK_SIZE) + ';'
+  if (key === lastKey) return
+  lastKey = key
   const active = new Set()
   for (const p of positions) {
     const cx0 = Math.floor((p.x + 0.5) / CHUNK_SIZE), cz0 = Math.floor((p.z + 0.5) / CHUNK_SIZE)
-    for (let x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; x++)
-      for (let z = -VIEW_DISTANCE; z <= VIEW_DISTANCE; z++) {
+    for (let x = -radius; x <= radius; x++)
+      for (let z = -radius; z <= radius; z++) {
+        if (x * x + z * z > radius * radius + radius) continue // área redonda: sem os cantos distantes
         const cx = cx0 + x, cz = cz0 + z, k = id(cx, cz)
         active.add(k)
         if (!chunks.has(k) && !queue.has(k)) queue.set(k, { cx, cz })
       }
   }
   for (const k of [...queue.keys()]) if (!active.has(k)) queue.delete(k)
-  for (const [k, chunk] of chunks) if (!active.has(k)) Unload(scene, colliders, k, chunk)
+  const dead = []
+  for (const [k, chunk] of chunks) if (!active.has(k)) dead.push([k, chunk])
+  if (dead.length) Unload(scene, colliders, dead)
 }
 
-function Unload(scene, colliders, k, chunk) {
-  RemoveColliders(chunk.userData.colliders)
-  for (const c of chunk.userData.colliders) {
-    const i = colliders.indexOf(c)
-    if (i !== -1) colliders.splice(i, 1)
+function Unload(scene, colliders, dead) {
+  const gone = new Set()
+  for (const [k, chunk] of dead) {
+    RemoveColliders(chunk.userData.colliders)
+    RemoveBuildings(chunk.userData.buildings)
+    RemoveLamps(chunk.userData.lamps)
+    for (const c of chunk.userData.colliders) gone.add(c)
+    for (const d of chunk.userData.dispose) d.dispose()
+    scene.remove(chunk)
+    chunks.delete(k)
   }
-  for (const d of chunk.userData.dispose) d.dispose()
-  scene.remove(chunk)
-  chunks.delete(k)
+  // compacta o array uma vez só (antes era indexOf+splice por colisor: O(n²))
+  let w = 0
+  for (let i = 0; i < colliders.length; i++) if (!gone.has(colliders[i])) colliders[w++] = colliders[i]
+  colliders.length = w
 }
 
 export function ProcessChunkQueue(scene, colliders, max = 2) {
@@ -43,6 +63,8 @@ export function ProcessChunkQueue(scene, colliders, max = 2) {
     scene.add(chunk)
     colliders.push(...chunk.userData.colliders)
     AddColliders(chunk.userData.colliders)
+    AddBuildings(chunk.userData.buildings)
+    AddLamps(chunk.userData.lamps)
     chunks.set(k, chunk)
   }
 }

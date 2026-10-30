@@ -1,9 +1,9 @@
 import QRCode from 'qrcode'
-import { WEAPONS } from '../weapons/weapons'
+import { clock } from '../game'
 
 const $ = (s) => document.querySelector(s)
 
-export function CreateHud(game) {
+export function CreateHud(game, climate) {
   let t = 0
   return {
     setRoom(code) {
@@ -16,11 +16,16 @@ export function CreateHud(game) {
       $('#msg').textContent = game.st.msgT > 0 ? game.st.msg : (game.players.size ? '' : 'Entre pelo celular para jogar')
       if ((t -= dt) > 0) return
       t = 0.1
-      $('#wave').textContent = `Onda ${game.st.wave}`
+      $('#wave').textContent = `⏱ ${clock(game.st.time)} · 🧟 ${game.zombies()}`
       $('#score').textContent = `Pontos ${game.st.score}`
+      if (climate) $('#clock').textContent = climate.label()
       $('#plist').innerHTML = [...game.players.values()].map((p) => {
-        const s = p.ammo[p.weapon]
-        return `<div class="pl ${p.dead ? 'dead' : ''}"><b>${p.name}</b> · ${WEAPONS[p.weapon].name} ${p.reload > 0 ? '(recarregando)' : `${s.mag}/${s.reserve === Infinity ? '∞' : s.reserve}`} · ${p.kills} abates<div class="bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div></div>`
+        const inf = game.info(p)
+        const cds = inf.buttons.filter((b) => b.cd > 0).map((b) => `<span class="cd">${b.l} ${Math.ceil(b.cd * p.cls.cd[inf.buttons.indexOf(b)])}s</span>`).join('')
+        const car = p.vehicle ? ` · 🚗 ${p.vehicle.d.name}${p.seat.mode === 'drive' ? ' (dirigindo)' : ''}` : ''
+        const mana = p.cls.id === 'mage' ? `<div class="bar mana"><i style="width:${p.mana}%"></i></div>` : ''
+        const state = p.dead ? (game.st.over ? '' : ` · 💀 volta em ${Math.ceil(p.reviveT)}s`) : p.held ? ' · <span class="grab">🧟 AGARRADO! (V)</span>' : ''
+        return `<div class="pl ${p.dead ? 'dead' : ''}"><b>${p.cls.icon} ${p.name}</b> · ${inf.text} · ${p.kills} abates${car}${p.buffT > 0 ? ' · ✨' : ''}${state}<div class="bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div>${mana}${cds ? `<div class="cds">${cds}</div>` : ''}</div>`
       }).join('')
     },
   }

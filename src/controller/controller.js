@@ -1,4 +1,6 @@
-// Controle no celular: stick esquerdo move, stick direito mira (e atira enquanto estiver inclinado).
+// Controle no celular: stick esquerdo move (ou dirige), stick direito mira (e ataca enquanto estiver inclinado).
+// Botões da classe chegam do jogo (nome + recarga) e o botão 🚗 aparece perto de um veículo.
+// Empurrar: afasta/derruba zumbis e solta do agarrão (pisa em quem está caído); pisca quando um zumbi agarra.
 const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 $('#code').value = (params.get('room') || '').toUpperCase()
@@ -6,7 +8,7 @@ $('#name').value = localStorage.getItem('name') || ''
 
 const url = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:8080`
 const input = { mx: 0, mz: 0, ax: 0, az: 0, run: 0 }
-let ws, lastHp = 100
+let ws, lastHp = 100, lastHeld = false, kicked = false
 
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)) }
 
@@ -28,9 +30,11 @@ $('#go').onclick = () => {
     } else if (m.t === 'error') $('#err').textContent = m.msg
     else if (m.t === 'state') onState(m)
     else if (m.t === 'hit') navigator.vibrate?.(120)
+    else if (m.t === 'lobby') showState(`Você é o Jogador ${m.slot}\nAguardando o host iniciar… (${m.total} na sala)`)
+    else if (m.t === 'kick') { kicked = true; showState(m.msg || 'Removido da sala'); ws.close() }
     else if (m.t === 'closed') showState('Jogo encerrado')
   }
-  ws.onclose = () => { if ($('#pad').style.display === 'block') showState('Desconectado — recarregue a página') }
+  ws.onclose = () => { if (!kicked && $('#pad').style.display === 'block') showState('Desconectado — recarregue a página') }
 }
 
 function showState(t) { const s = $('#state'); s.textContent = t; s.style.display = t ? 'block' : 'none' }
@@ -38,11 +42,25 @@ function showState(t) { const s = $('#state'); s.textContent = t; s.style.displa
 function onState(m) {
   $('#hp i').style.width = `${(m.hp / m.max) * 100}%`
   $('#hp i').style.background = m.hp < 30 ? '#e25555' : '#6fd36f'
-  $('#weapon').textContent = `${m.w} ${m.rl ? '· recarregando' : `${m.mag}/${m.res < 0 ? '∞' : m.res}`}`
-  $('#wave').textContent = `Onda ${m.wave}`
+  $('#cls').textContent = m.cls || ''
+  $('#weapon').textContent = m.w
+  ;(m.btn || []).concat([null, null, null]).slice(0, 3).forEach((b, i) => {
+    const el = $(`#b${i + 1}`)
+    el.classList.toggle('hide', !b)
+    if (!b) return
+    if (el.textContent !== b[0]) el.textContent = b[0]
+    el.style.setProperty('--cd', b[1])
+  })
+  const use = $('#use')
+  use.className = m.car === 2 ? 'in' : m.car === 1 ? 'near' : ''
+  use.textContent = m.car === 2 ? '🚗 Sair' : '🚗 Entrar'
+  $('#time').textContent = `⏱ ${String(Math.floor(m.time / 60)).padStart(2, '0')}:${String(m.time % 60).padStart(2, '0')}`
+  $('#shove').classList.toggle('alert', !!m.held)
   $('#st i').style.width = `${m.st}%`
   if (m.st <= 0 && input.run) { input.run = 0; $('#run').classList.remove('on') }
-  showState(m.dead ? 'Você caiu — espere a próxima onda' : '')
+  showState(m.dead ? (m.rv ? `Você caiu — volta em ${m.rv}s` : 'Você caiu') : m.held ? 'AGARRADO!\nEmpurre ou puxe para longe' : '')
+  if (m.held && !lastHeld) navigator.vibrate?.([80, 40, 80])
+  lastHeld = !!m.held
   if (m.hp < lastHp) navigator.vibrate?.(60)
   lastHp = m.hp
 }
@@ -79,12 +97,13 @@ function Stick(zone, cb) {
 Stick($('#zl'), (x, y) => { input.mx = x; input.mz = y })
 Stick($('#zr'), (x, y) => { input.ax = x; input.az = y })
 
-for (const [id, a] of [['#swap', 'swap'], ['#reload', 'reload']]) {
-  $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a }) })
+for (const [id, a] of [['#b1', 'b1'], ['#b2', 'b2'], ['#b3', 'b3'], ['#use', 'use']]) {
+  $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a }); navigator.vibrate?.(15) })
 }
 
 // Correr liga/desliga (os dois polegares ficam nos sticks); Pular é um toque
 $('#run').addEventListener('pointerdown', (e) => { e.stopPropagation(); input.run = input.run ? 0 : 1; $('#run').classList.toggle('on', !!input.run) })
 $('#jump').addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a: 'jump' }); navigator.vibrate?.(15) })
+$('#shove').addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a: 'shove' }); navigator.vibrate?.(25) })
 
 setInterval(() => send({ t: 'in', run: input.run, mx: +input.mx.toFixed(2), mz: +input.mz.toFixed(2), ax: +input.ax.toFixed(2), az: +input.az.toFixed(2) }), 33)
