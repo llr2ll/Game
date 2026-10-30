@@ -29,7 +29,8 @@ const _v = new THREE.Vector3()
 const rnd = (a, b) => a + Math.random() * (b - a)
 const sameLv = (a, b) => (a.lv || 0) === (b.lv || 0)
 
-// ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?) }
+// ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?),
+//        impact(x, z, tipo) (tremor/pausa) }
 export function CreateHorde(ctx) {
   const { scene, fx, gore } = ctx
   const list = []
@@ -137,6 +138,7 @@ export function CreateHorde(ctx) {
     if (e.state === 'down') dmg *= Z.downDamage
     e.hp -= dmg
     e.hitT = 0.12
+    e.rig.flash(BALANCE.juice.hitFlash) // pisca branco: o golpe pegou
     e.kx += kx; e.kz += kz; e.imp += Math.hypot(kx, kz)
     // força do golpe somada no mesmo instante (os 7 chumbos da espingarda contam como um tiro só)
     const now = performance.now()
@@ -207,6 +209,7 @@ export function CreateHorde(ctx) {
       p.atk = 0.35; p.slowAct = 0.3; p.slowT = 0.35
       ctx.hit(e, 3.2, p, 0, 0)
       sfx('stomp', { x: e.x, z: e.z })
+      if (ctx.impact) ctx.impact(e.x, e.z, 'stomp')
       fx.burst(e.x, e.fy + 0.3, e.z, BLOOD, 5, 2.5, 0.4, 0.9)
       fx.puff(e.x, e.fy + 0.1, e.z, 0xb8ac98, 0.4, 0.5, 0.4)
       return

@@ -111,4 +111,15 @@ export const BALANCE = {
     gameOverDelay: 6, // segundos mostrando "FIM DE JOGO" antes de voltar ao menu
     vehicle: { carDamage: 0.9, playerDamage: 0.35 }, // dentro do carro: o carro leva 90% do dano e o jogador só 35%
   },
+
+  // ---------------------------------------------------------------- sensação ("juice"): só aparência, a não ser a pausa
+  juice: {
+    // tremor de tela: quanto a câmera balança (metros) em cada caso; scale 0 desliga todos. Só treme a tela de quem está perto (radius)
+    shake: { scale: 1, explosion: 0.45, crash: 0.4, runover: 0.18, shotgun: 0.1, heavyHit: 0.12, stomp: 0.1, time: 0.3, radius: 25 },
+    // pausa no impacto: o jogo quase para por alguns segundos (0,04 = 40 ms) nos golpes fortes; 0 desliga. Vale para todos ao mesmo tempo
+    hitStop: { heavyHit: 0.04, stomp: 0.04, runover: 0.04 },
+    hitFlash: 0.08, // segundos que o zumbi fica branco ao levar golpe
+    noiseRing: { min: 7, every: 0.6, time: 0.7, alpha: 0.28, color: 0xfff1c8 }, // anel de barulho: só a partir de 7 m (99 desliga) · no máx. 1 por lugar a cada 0,6 s · duração · opacidade · cor
+    muzzleGlow: { radius: 3.2, time: 0.07, alpha: 0.5, color: 0xffd58a }, // clarão do tiro no chão, só à noite: raio · duração · força · cor
+  },
 }

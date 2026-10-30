@@ -16,6 +16,7 @@ export function CreateSplitScreen(renderer, scene) {
   const linked = new Set() // pares "a|b" atualmente juntos (histerese)
   const size = new THREE.Vector2()
   const target = new THREE.Vector3()
+  const shakes = [] // tremores ativos: { x, z, power, time, radius, t }
 
   const holder = document.createElement('div')
   holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6'
@@ -118,6 +119,7 @@ export function CreateSplitScreen(renderer, scene) {
 
   // ---- por frame: grupos, retângulos e câmeras ----
   function update(players, dt) {
+    for (let i = shakes.length - 1; i >= 0; i--) if ((shakes[i].t += dt) >= shakes[i].time) shakes.splice(i, 1)
     renderer.getSize(size)
     const W = size.x, H = size.y
     const groups = players.length ? buildGroups(players) : [{ core: [], members: [] }]
@@ -163,6 +165,10 @@ export function CreateSplitScreen(renderer, scene) {
       cam.updateProjectionMatrix()
       cam.position.set(s.f.x, s.f.y + CAM_Y * s.z, s.f.z + CAM_Z * s.z)
       cam.lookAt(s.f.x, s.f.y + 0.5, s.f.z)
+      // tremor: soma dos tremores perto desta tela (fraco longe e no fim); a câmera só desliza, não gira
+      let sh = 0
+      for (const q of shakes) { const d = Math.hypot(q.x - s.f.x, q.z - s.f.z); if (d < q.radius) sh += q.power * (1 - q.t / q.time) ** 2 * (1 - d / q.radius) }
+      if (sh > 0) { sh = Math.min(sh, 0.6); cam.position.x += (Math.random() - 0.5) * 2 * sh; cam.position.z += (Math.random() - 0.5) * 2 * sh; cam.position.y += (Math.random() - 0.5) * sh }
       return { cam, rect, group: g }
     })
   }
@@ -209,6 +215,8 @@ export function CreateSplitScreen(renderer, scene) {
       placeBands([{ x: 0, y: 0, w: size.x, h: size.y }])
       labels.forEach((el) => (el.style.display = 'none'))
     },
-    reset() { state.clear(); linked.clear() },
+    reset() { state.clear(); linked.clear(); shakes.length = 0 },
+    // tremor de tela em (x, z): power = deslocamento máximo em metros; só as telas a menos de `radius` sentem
+    shake(x, z, power, time = 0.3, radius = 25) { if (power > 0) shakes.push({ x, z, power, time, radius, t: 0 }) },
   }
 }

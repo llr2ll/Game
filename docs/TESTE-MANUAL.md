@@ -24,6 +24,7 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | 11 | **Morrer e voltar**: deixe um jogador ser mordido até cair | Com 2 jogadores: volta em 25 s ao lado do outro. Sozinho: "FIM DE JOGO" e volta ao menu | ☐ |
 | 12 | **Noite**: aperte N várias vezes (+1 hora cada) até 20:00 | O céu escurece, os postes acendem e aparecem mais zumbis | ☐ |
 | 13 | **Esc** durante a partida | Volta ao menu sem travar | ☐ |
+| 14 | **Sensação**: atire, jogue granada, dê o 3º golpe da katana | Anel fraco no chão até onde o som foi · zumbi pisca branco · a tela treme na explosão · o 3º golpe dá um "tranco" curtinho · à noite o tiro clareia o chão | ☐ |
 
 Para testar outra classe pelo teclado: Esc → no menu, aperte A ou D → Enter.
 

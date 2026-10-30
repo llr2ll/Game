@@ -56,7 +56,7 @@ docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-
 src/engine/               genérico
   core/                   events.js (avisos entre partes), loop.js (laço de desenho com THREE.Timer, dt ≤ 0,05),
                           memo.js (cache com limite para o mundo infinito)
-  render/                 splitscreen.js (junta <13 m, separa >19 m), light.js, style.js (paleta, materiais, vento),
+  render/                 splitscreen.js (junta <13 m, separa >19 m; shake = tremor só nas telas perto), light.js, style.js (paleta, materiais, vento),
                           entity-shadows.js (sombras falsas), follow.js (contador de FPS)
   input/                  contract.js (contrato de input), keyboard.js (teclado+mouse), phone.js (código do celular)
   net/host.js             conexão da tela com o relay
@@ -154,7 +154,7 @@ Título claro + descrição com:
 
 ## Proibido nesta fase (até o dono liberar)
 Só mudar regras de jogo nos PRs J1…J14 aprovados pelo dono (um por vez). Não criar classes, armas, inimigos, itens ou missões fora desse plano.
-Não implementar online com uma tela por jogador. Não mexer na câmera. Não migrar para TypeScript. Não criar sistema Entity/Component. Não publicar nada.
+Não implementar online com uma tela por jogador. Não mexer na câmera (exceção liberada no J2: tremor de tela, `split.shake`). Não migrar para TypeScript. Não criar sistema Entity/Component. Não publicar nada.
 
 ## Fatos que não são óbvios no código
 - **Não existe seed.** O mundo é uma função fixa das coordenadas (`hash` em `src/world/noise.js`): toda partida acontece no mesmo mapa.
@@ -194,6 +194,10 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j2-juice (J2)** — sensação: anel de barulho (habilidades a partir de 7 m), zumbi pisca branco ao levar golpe (`rig.flash`),
+  tremor de tela por distância (explosão, batida, atropelamento, espingarda, 3º golpe, pisão), pausa de 40 ms (3º golpe, pisão, atropelamento),
+  clarão do tiro no chão à noite. Tudo em `balance.js · juice`. Um aviso só: `impact(x, z, tipo)` (habilidades, horda e carros → regras).
+  Replay atualizado de propósito: só a pausa muda o jogo (com `hitStop` 0 o replay dá igual ao anterior — verificado).
 - **j1-escolher-classe (J1)** — classe escolhida no menu (◀ ▶; A/D no teclado; ◀ ▶ na espera do celular), classes repetidas permitidas;
   anel da cor da vaga no chão sob cada jogador + faixa da cor no placar. Quem não troca joga igual (replay igual). Smoke troca classes no menu.
 - **correcao-placas** — atlas de placas com células fixas e contagem de quem usa cada texto. Antes: 1.813 placas montadas com texto

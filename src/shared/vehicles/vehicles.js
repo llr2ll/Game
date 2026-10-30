@@ -241,6 +241,7 @@ export function CreateVehicles(scene, fx, wfx) {
     }
     if (impact > 3 && gate('crash', 0.25)) sfx('crash', { x: v.x, z: v.z, power: (impact - 3) / 12, vol: Math.min(1, impact / 8) }) // batida: amassa e (forte) quebra vidro
     if (impact > 6) {
+      if (hooks.impact) hooks.impact(v.x, v.z, 'crash', Math.min(1, (impact - 6) / 10)) // batida forte: o jogo decide o tremor
       damage(v, (impact - 6) * 3.2 / d.mass)
       fx.burst(v.x + f1 * d.L * 0.45, v.y + 0.7, v.z + f2 * d.L * 0.45, 0xffd27a, 6, 4, 0.35)
       for (const p of v.seats) if (p) p.model.hurt()
@@ -260,6 +261,7 @@ export function CreateVehicles(scene, fx, wfx) {
         v.vx *= 0.92; v.vz *= 0.92
         damage(v, 1.2)
         sfx('runover', { x: e.x, z: e.z })
+        if (hooks.impact) hooks.impact(e.x, e.z, 'runover') // atropelou: o jogo decide tremor/pausa
         fx.burst(e.x, (e.group.position.y || 0) + 1, e.z, 0x6a1612, 6, 5, 0.4)
       }
     }

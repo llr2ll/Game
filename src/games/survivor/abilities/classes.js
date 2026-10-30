@@ -46,7 +46,8 @@ export function InitClassState(p) {
   for (const k in WEAPONS) p.ammo[k] = { mag: WEAPONS[k].mag, reserve: WEAPONS[k].reserve }
 }
 
-// ctx: { scene, fx, wfx, colliders, enemies, players, hit(e, dmg, p, kx, kz), noise(x, z, raio) — atrai zumbis }
+// ctx: { scene, fx, wfx, colliders, enemies, players, hit(e, dmg, p, kx, kz), noise(x, z, raio) — atrai zumbis,
+//        impact(x, z, tipo) — tremor/pausa (balance.js · juice), night() }
 export function CreateAbilities(ctx) {
   const { scene, fx, wfx, colliders, enemies, players } = ctx
   const tracers = [], bolts = [], nades = [], meteors = [], timers = []
@@ -95,6 +96,7 @@ export function CreateAbilities(ctx) {
     for (let i = 0; i < 5; i++) fx.puff(x + (Math.random() - 0.5) * r, y + 0.3, z + (Math.random() - 0.5) * r, 0xb4b0b8, 0.7 + Math.random() * 0.4, 1.1 + Math.random() * 0.5, 1.8)
     if (WaterDepth(x, z) > 0.1) wfx.splash(x, z, 18, 1.4)
     if (ctx.noise) ctx.noise(x, z, BALANCE.explosionNoise)
+    if (ctx.impact) ctx.impact(x, z, 'explosion')
     area(p, x, z, r, dmg, power)
   }
 
@@ -126,6 +128,9 @@ export function CreateAbilities(ctx) {
     if (p.weapon !== 'shotgun' && gate('casing', 0.18)) sfx('casing', { x: p.x, z: p.z, delay: 0.3 })
     p.model.kick()
     p.model.muzzle(tmp)
+    if (p.weapon === 'shotgun' && ctx.impact) ctx.impact(p.x, p.z, 'shotgun')
+    // à noite o tiro clareia o chão em volta (brilho falso, não é luz de verdade)
+    if (ctx.night && ctx.night()) { const L = BALANCE.juice.muzzleGlow; fx.ring(tmp.x, GroundAt(tmp.x, tmp.z), tmp.z, L.color, 0.4, L.radius, L.time, { fill: true, alpha: L.alpha }) }
     for (let n = 0; n < (w.pellets || 1); n++) {
       const a = p.aimAngle + (Math.random() - 0.5) * 2 * w.spread
       const dx = Math.sin(a), dz = Math.cos(a)
@@ -186,7 +191,7 @@ export function CreateAbilities(ctx) {
       const y = (p.y || 0) + (n === 2 ? 0.7 : 1.1)
       fx.arc(p.x, y, p.z, a + (n === 1 ? -0.2 : n === 0 ? 0.2 : 0), 0.6, 2.9, n === 2 ? 1.0 : 2.3, n === 2 ? 0xc8e4ff : 0xeaf4ff, 0.2, 0.35)
       sfx('swing', { x: p.x, z: p.z, heavy: n === 2, cls: p.cls.id })
-      if (cone(p, a, S.combo.range, S.combo.angle[n], S.combo.damage[n], S.combo.knock[n])) sfx('slice', { x: p.x, z: p.z })
+      if (cone(p, a, S.combo.range, S.combo.angle[n], S.combo.damage[n], S.combo.knock[n])) { sfx('slice', { x: p.x, z: p.z }); if (n === 2 && ctx.impact) ctx.impact(p.x, p.z, 'heavyHit') } // 3º golpe: pausa + tremor
       noise(p, S.combo.noise)
     })
   }

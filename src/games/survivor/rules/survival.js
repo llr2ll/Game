@@ -17,7 +17,7 @@ import { PLAYER_COLORS } from '../../../engine/render/splitscreen'
 
 const MAX_PLAYERS = 4
 // números das regras: config/balance.js
-const RU = BALANCE.rules, PL = BALANCE.player
+const RU = BALANCE.rules, PL = BALANCE.player, J = BALANCE.juice
 const REVIVE_T = RU.revive.time, SUPPLY_T = RU.supply.every
 // movimento (shared) com os números deste jogo; a balada do Bardo também acelera
 const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
@@ -25,19 +25,27 @@ const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
 const RING_GEO = new THREE.RingGeometry(0.5, 0.68, 28).rotateX(-Math.PI / 2)
 const RING_MAT = PLAYER_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false }))
 
-// hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?) }
+// hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?),
+//          shake(x, z, power, time, radius) (tremor nas telas perto) }
 export function CreateGame(scene, colliders, net, hooks = {}) {
   const players = new Map()
   const wfx = CreateWaterFX(scene) // ondas e respingos
   const fx = CreateFX(scene)
   const gore = CreateGore(scene) // sangue no chão/paredes e pedaços de zumbi
   const vehicles = CreateVehicles(scene, fx, wfx)
-  const st = { time: 0, score: 0, over: false, overT: 0, msg: '', msgT: 0, sync: 0, supplyT: SUPPLY_T }
+  const st = { time: 0, score: 0, over: false, overT: 0, msg: '', msgT: 0, sync: 0, supplyT: SUPPLY_T, stopT: 0 }
+
+  // sensação de impacto: tremor nas telas perto e, nos golpes fortes, uma pausa curtinha no jogo (números em balance.js · juice)
+  function impact(x, z, kind, amount = 1) {
+    const sh = (J.shake[kind] || 0) * amount * J.shake.scale
+    if (sh > 0 && hooks.shake) hooks.shake(x, z, sh, J.shake.time, J.shake.radius)
+    if (J.hitStop[kind]) st.stopT = Math.max(st.stopT, J.hitStop[kind])
+  }
 
   const say = (t, s = 2.2) => { st.msg = t; st.msgT = s }
   const alive = () => [...players.values()].filter((p) => !p.dead)
 
-  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true) })
+  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true), impact })
   const enemies = horde.list
 
   // dano num zumbi (todas as fontes: tiro, espada, magia, onda, pisão, atropelamento); p = quem leva o crédito
@@ -45,7 +53,19 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     if (e.dying > 0) return
     if (horde.damage(e, dmg, kx, kz, p)) { st.score += e.score; if (p) p.kills++ }
   }
-  const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise: horde.noise })
+  // barulho das habilidades: chama a horda e desenha o anel até onde o som chegou (no máx. 1 por lugar a cada pouco)
+  const ringT = new Map()
+  function noise(x, z, r) {
+    horde.noise(x, z, r)
+    const R = J.noiseRing
+    if (r < R.min) return
+    const k = `${Math.round(x / 3)},${Math.round(z / 3)}`
+    if (ringT.get(k) > st.time) return
+    if (ringT.size > 64) for (const [kk, t] of ringT) if (t <= st.time) ringT.delete(kk)
+    ringT.set(k, st.time + R.every)
+    fx.ring(x, GroundAt(x, z), z, R.color, 0.6, r, R.time, { alpha: R.alpha })
+  }
+  const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise, impact, night: hooks.night || (() => false) })
 
   // slot = vaga do lobby: cor e ponto de largada · choice = classe escolhida (0 Atirador · 1 Samurai · 2 Mago · 3 Bardo; sem escolha = a da vaga)
   function addPlayer(id, name, slot, choice) {
@@ -136,13 +156,13 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     for (const p of [...players.keys()]) removePlayer(p)
     clearAll()
     vehicles.clear()
-    Object.assign(st, { time: 0, score: 0, over: false, msg: '', msgT: 0, supplyT: SUPPLY_T })
+    Object.assign(st, { time: 0, score: 0, over: false, msg: '', msgT: 0, supplyT: SUPPLY_T, stopT: 0 })
   }
   function restart() {
     clearAll()
     for (const p of players.values()) if (p.vehicle) vehicles.exit(p, true)
     vehicles.clear()
-    Object.assign(st, { time: 0, score: 0, over: false, supplyT: SUPPLY_T })
+    Object.assign(st, { time: 0, score: 0, over: false, supplyT: SUPPLY_T, stopT: 0 })
     for (const p of players.values()) {
       Object.assign(p, { dead: false, stamina: 100, tired: false, jy: 0, vy: 0, lv: 0, gy: undefined, x: (p.idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, held: 0, struggle: 0, reviveT: 0 })
       InitClassState(p)
@@ -151,6 +171,8 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   }
 
   function update(dt) {
+    // pausa no impacto: o jogo quase para por alguns centésimos de segundo
+    if (st.stopT > 0) { st.stopT -= dt; dt *= 0.05 }
     const now = performance.now()
     st.msgT = Math.max(0, st.msgT - dt)
 
@@ -179,7 +201,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
 
     // zumbis e veículos
     const list = [...players.values()]
-    vehicles.update(dt, list, enemies, list.length ? list : [{ x: 0, z: 0 }], { hit })
+    vehicles.update(dt, list, enemies, list.length ? list : [{ x: 0, z: 0 }], { hit, impact })
     for (const p of list) { // depois dos veículos: quem está sentado já tem a posição do banco
       p.model.animate(dt, p)
       p.ring.visible = !p.vehicle

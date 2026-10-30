@@ -24,13 +24,13 @@ export function CreateFX(scene) {
   const add = (mesh, life, step, own = {}) => { scene.add(mesh); live.push({ mesh, t: 0, life, step, ...own }); return mesh }
 
   return {
-    // anel que se expande no chão (cura, gelo, explosão, alvo do meteoro)
-    ring(x, y, z, color, r0, r1, life = 0.5, { add: additive = true, fill = false } = {}) {
+    // anel que se expande no chão (cura, gelo, explosão, alvo do meteoro); alpha = opacidade inicial
+    ring(x, y, z, color, r0, r1, life = 0.5, { add: additive = true, fill = false, alpha = fill ? 0.35 : 0.9 } = {}) {
       const mat = fade(color, additive)
       const m = new THREE.Mesh(fill ? discGeo : ringGeo, mat)
       m.position.set(x, y + 0.06, z)
       m.renderOrder = 2
-      return add(m, life, (k) => { const r = r0 + (r1 - r0) * (1 - (1 - k) ** 2); m.scale.set(r, 1, r); mat.opacity = (1 - k) * (fill ? 0.35 : 0.9) }, { mat })
+      return add(m, life, (k) => { const r = r0 + (r1 - r0) * (1 - (1 - k) ** 2); m.scale.set(r, 1, r); mat.opacity = (1 - k) * alpha }, { mat })
     },
     // arco plano (rastro da espada, onda do bardo): centro no jogador, abre `span` radianos em volta de `ang`
     arc(x, y, z, ang, r0, r1, span, color, life = 0.22, width = 0.45) {

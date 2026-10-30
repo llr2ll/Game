@@ -53,6 +53,9 @@ Números (vida, velocidade, recargas, dano, alcance, mana, barulho) em **`src/ga
 ## Veículos (sedã, picape, jipe)
 Os carros da estrada são dirigíveis por qualquer um dos 4 jogadores (três já esperam na largada). Cima/W acelera, baixo/S freia e depois dá ré, esquerda/direita (A/D) viram o carro para o lado dele. Sedã: rápido no asfalto, 4 lugares fechados. Picape: resistente, 2 na cabine + 2 em pé na caçamba (atiram de lá). Jipe: aberto, melhor fora da estrada. Passageiros das classes de longo alcance atacam do carro; atropelar machuca e derruba zumbis (carro ligado faz barulho e atrai a horda); batidas e ataques estragam o veículo (fumaça → carcaça queimada). Ajustes em `src/shared/vehicles/models.js` (desempenho, bancos) e `src/shared/vehicles/vehicles.js` (física, entrar/sair).
 
+## Sensação ("juice")
+Anel fraco no chão mostra até onde o barulho chegou (tiro, música, explosão: os zumbis ouvem até ali). Zumbi pisca branco ao levar golpe. Explosão, batida, atropelamento, espingarda, 3º golpe da katana e pisão tremem a tela (só as telas perto). Golpes fortes dão uma pausa de 40 ms. À noite o tiro clareia o chão. Tudo ajustável (ou desligável) em `src/games/survivor/config/balance.js`, seção `juice`.
+
 ## Som (procedural, sem arquivos)
 Todo som é sintetizado na hora com Web Audio (osciladores, ruído, filtros e cordas dedilhadas Karplus-Strong) — nada para baixar. Sons têm posição: volume, pan e abafado pela distância até o jogador mais perto; parede no meio (dentro/fora de casa) abafa. O áudio liga no primeiro clique/tecla; **M** liga/desliga.
 - `src/engine/audio/engine.js` – contexto, barramentos (efeitos, ambiente, interface), compressor, limite de vozes e as primitivas (tom, ruído, estalo, metal, voz com formantes, corda).

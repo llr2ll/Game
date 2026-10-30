@@ -10,6 +10,7 @@ import { SoleDepth } from '../characters/player'
 // perseguição, bote, agarrão com mordida, tropeço, queda de costas/de bruços, levantar, comer o corpo, morrer.
 const B = { hipY: 0.86, legX: 0.1, legY: -0.04, knee: 0.38, spineY: 0.1, shX: 0.24, shY: 0.44, neckY: 0.54 }
 export const GETUP_T = 0.9
+const FLASH_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff }) // zumbi branco por um instante ao levar golpe
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x))
 const lerp = (a, b, t) => a + (b - a) * t
@@ -93,7 +94,8 @@ const stumpGeo = () => (STUMP ||= merge([
 export function CreateZombieModel(v = 0) {
   const g = (VARS[v] ||= variant(v))
   const R = Math.random
-  const mesh = (geo) => new THREE.Mesh(geo, MAT.solid)
+  const meshes = []
+  const mesh = (geo) => { const m = new THREE.Mesh(geo, MAT.solid); meshes.push(m); return m }
   const grp = (parent, x = 0, y = 0, z = 0) => { const o = new THREE.Group(); o.position.set(x, y, z); parent.add(o); return o }
 
   const root = new THREE.Group()
@@ -138,6 +140,9 @@ export function CreateZombieModel(v = 0) {
     return pt
   }
   function restore() { for (const k in parts) { parts[k].mesh.visible = true; parts[k].stump.visible = false } }
+  // levou golpe: fica branco por um instante (some sozinho no animate)
+  let flashT = 0
+  function flash(t = 0.08) { if (flashT <= 0) for (const m of meshes) m.material = FLASH_MAT; flashT = t }
   const has = (name) => parts[name].mesh.visible
 
   // jeito de cada um: manca de uma perna, curvado, cabeça caída para um lado, quantos braços estende
@@ -146,6 +151,7 @@ export function CreateZombieModel(v = 0) {
   let t = R() * 10, phase = R() * 6, moveW = 0, reachW = 0, lungeW = 0, grabW = 0, staggerW = 0, crouchW = 0, fall = 0, flinch = 0
 
   function animate(dt, e) {
+    if (flashT > 0 && (flashT -= dt) <= 0) for (const m of meshes) m.material = MAT.solid
     t += dt
     const s = e.state, sp = e.vel
     moveW = damp(moveW, clamp(sp / 1.1, 0, 1), 8, dt)
@@ -222,5 +228,5 @@ export function CreateZombieModel(v = 0) {
     if (plant > 0.01) { root.updateMatrixWorld(true); hips.position.y += SoleDepth(root, knees) * plant }
   }
 
-  return { root, animate, sever, restore, has }
+  return { root, animate, sever, restore, has, flash }
 }
