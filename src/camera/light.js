@@ -1,27 +1,44 @@
-import * as THREE from "three";
+import * as THREE from 'three'
 
-export function Light(scene) {
-  scene.background = new THREE.Color(0xb58d78);
-  scene.fog = new THREE.Fog(0xb58d78, 12, 55);
-  const ambient = new THREE.AmbientLight(0xf0d6c5, 1.2);
+// Céu, névoa, luz de céu/chão e sol. As cores e a posição do sol mudam com a hora e o tempo (world/climate.js);
+// aqui só criamos as peças e um jeito barato de repintar o gradiente do céu.
+function skyCanvas() {
+  if (typeof document === 'undefined') return null
+  try {
+    const c = document.createElement('canvas')
+    c.width = 4; c.height = 256
+    const x = c.getContext('2d')
+    if (!x) return null
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    const paint = (top, mid, bottom) => {
+      const g = x.createLinearGradient(0, 0, 0, 256)
+      g.addColorStop(0, top); g.addColorStop(0.55, mid); g.addColorStop(1, bottom)
+      x.fillStyle = g
+      x.fillRect(0, 0, 4, 256)
+      tex.needsUpdate = true
+    }
+    paint('#78c8f0', '#cdeccf', '#eef6b0')
+    return { tex, paint }
+  } catch { return null }
+}
 
-  scene.add(ambient);
+export function Light(scene, renderer) {
+  // tone mapping "Neutral": comprime os brilhos sem dessaturar as cores (custo ~zero, é só uma linha no shader)
+  renderer.toneMapping = THREE.NeutralToneMapping
+  renderer.toneMappingExposure = 1.0
 
-  const sunset = new THREE.DirectionalLight(0xffc89a, 1.4);
+  const sky = skyCanvas()
+  scene.background = sky ? sky.tex : new THREE.Color(0xcdeccf) // fundo é um quad por tela: funciona no split screen
+  scene.fog = new THREE.Fog(0xcfeaa0, 32, 90)
 
-  sunset.position.set(-12, 8, 10);
+  const hemi = new THREE.HemisphereLight(0xe6f4ff, 0xaac860, 2.1) // luz de céu/chão: sombras suaves e coloridas
+  const sun = new THREE.DirectionalLight(0xfff1d0, 1.9)
+  sun.position.set(13, 15, 0.5).normalize().multiplyScalar(20)
+  scene.add(hemi, sun)
 
-  scene.add(sunset);
-
-  const sky = new THREE.DirectionalLight(0x8a8d9c, 0.5);
-
-  sky.position.set(10, 15, -15);
-
-  scene.add(sky);
-
-  const bounce = new THREE.DirectionalLight(0xd9b49f, 0.25);
-
-  bounce.position.set(0, -5, 0);
-
-  scene.add(bounce);
+  return {
+    hemi, sun,
+    paintSky: (top, mid, bottom) => { if (sky) sky.paint(top, mid, bottom); else scene.background.set(mid) },
+  }
 }
