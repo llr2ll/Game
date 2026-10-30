@@ -82,6 +82,14 @@ Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - Jogo pago na Steam, com demo. Sem microtransações.
 - 70% do esforço em deixar este jogo divertido, 30% em organização. A arquitetura nunca pode virar um projeto maior que o jogo.
 
+## Direção do jogo (decidida em 30/10/2026; detalhes em `docs/GAME-DESIGN.md`)
+- Conceito: **B — A paróquia sitiada.** O grupo escolhe uma casa como base, saqueia de dia e defende barricadas à noite.
+  Vence quem aguenta 3 noites (Cerco 1/demo: 2 noites). Chefe: a Santa Compaña, à meia-noite da última noite.
+- Queda: um aliado levanta em 3 s ao lado, ou um remédio levanta na hora. Sem ajuda em 40 s, só volta no próximo amanhecer.
+- Solo: sem companheiros controlados pelo computador; ajustes próprios (remédio inicial, levanta sozinho 1x por noite, +saque).
+  `?bots=` é só ferramenta de teste.
+- Ordem dos PRs: F1 → F2 → F3 (fundação) e depois J1…J14 (seção 10 do GAME-DESIGN).
+
 ## Regras de trabalho
 - PRs pequenos. Nunca misture reorganização com mudança de jogabilidade no mesmo PR.
 - Preserve sempre: FPS, sistema de chunks, split screen, controle pelo celular, determinismo do mundo, estilo visual e o contrato de input.
@@ -125,18 +133,18 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
   Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
 
 ## Plano da sessão de fundação (30/10/2026)
-0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (aguardando as decisões da seção 12) · 3. PR "fundação" (só depois das respostas).
-Quando o dono decidir, registre as respostas aqui e no topo de `docs/GAME-DESIGN.md`.
+0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs (F1, F2, F3).
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
 src/shared/   {characters, creatures, worldgen, vehicles, fx, audio}  peças opcionais para os 3 jogos
 src/games/survivor/  {config/balance.js, rules, enemies, abilities, main.js}
 ```
-Proposta pendente de resposta do dono: dividir a Etapa 3 em 3 PRs (mover pastas + check · instâncias/caches · balance.js + `?bots=3`).
+Decidido: a Etapa 3 vai em 3 PRs — F1 mover pastas + `npm run check` (+ cortar as dependências que sobem, `THREE.Timer`) ·
+F2 estado global → instâncias com `reset()` + caches limpos por distância (medir antes) · F3 `balance.js` + `?bots=3`.
 
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
-- **game-design** — `docs/GAME-DESIGN.md`: diagnóstico, 3 conceitos (recomendado: Rota de fuga), partida de 25 min, saque, 24 melhorias,
-  inimigos, progressão, juice, plano do vertical slice e comercial. Só documento.
+- **game-design** — `docs/GAME-DESIGN.md`: diagnóstico, 3 conceitos (escolhido: B, A paróquia sitiada), partida de ~27 min,
+  saque, 24 melhorias, inimigos, progressão, juice, plano do vertical slice e comercial. Só documento.
