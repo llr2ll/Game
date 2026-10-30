@@ -1,12 +1,12 @@
 [0s] 1/4 compilando o jogo…
 [1s] 2/4 subindo relay e página…
 [2s] 3/4 abrindo o jogo no navegador sem tela…
-[9s]    sala WNVZ aberta no relay
-[52s] 4/4 jogando 60 s…
-[84s]    captura 02-inicio.jpg
-[138s]    captura 03-acao.jpg
-[160s]    captura 04-noite.jpg
-[179s]    captura 05-fim.jpg
-[195s]    HUD: {"topo":"⏱ 00:05 · 🧟 24\nPontos 0\n🌙 19:20 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 4s\n⚔️ Celular · Katana · 0 abates"}
+[9s]    sala XWJH aberta no relay
+[50s] 4/4 jogando 60 s…
+[82s]    captura 02-inicio.jpg
+[139s]    captura 03-acao.jpg
+[166s]    captura 04-noite.jpg
+[185s]    captura 05-fim.jpg
+[207s]    HUD: {"topo":"⏱ 00:05 · 🧟 25\nPontos 0\n🌙 19:20 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 3s\n⚔️ Celular · Katana · 0 abates"}
 
 PASSOU

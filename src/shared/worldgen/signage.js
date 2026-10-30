@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { P, merge, MAT, bx, cyl } from '../../engine/render/style'
-import { AtlasTexture, SignUV } from './sign-atlas'
+import { AtlasTexture, SignUV, ReleaseSignUV } from './sign-atlas'
 import { KM_POST, TRAFFIC_BODY, TRAFFIC_LENS } from './assets-road'
 import { TrafficMat } from './streetlights'
 
@@ -19,7 +19,7 @@ const SHAPED = { stop: [0.34, 8], speed: [0.34, 24], noentry: [0.34, 24] }
 export function BuildSigns(g, d, cols, shadows, dispose, Height) {
   if (!d.signs.length && !d.kms.length && !d.lights.length) return
   ensureMat()
-  const solid = [], pos = [], nor = [], uvs = []
+  const solid = [], pos = [], nor = [], uvs = [], held = [] // held = textos do atlas que este chunk segura
   const quad = (cx, cy, cz, fx, fz, w, h, uv) => {
     const rx = fz, rz = -fx, hw = w / 2, hh = h / 2
     const c = [[-1, -1, uv.u0, uv.v0], [1, -1, uv.u1, uv.v0], [1, 1, uv.u1, uv.v1], [-1, 1, uv.u0, uv.v1]].map(([sx, sy, u, v]) => [cx + rx * hw * sx, cy + hh * sy, cz + rz * hw * sx, u, v])
@@ -27,6 +27,7 @@ export function BuildSigns(g, d, cols, shadows, dispose, Height) {
   }
   const plate = (gy, pl) => {
     const uv = SignUV(pl.key), kind = pl.key.split(':')[0], th = Math.atan2(pl.fx, pl.fz), y = gy + pl.y
+    if (!uv.blank) held.push(pl.key) // sem lugar no atlas (blank): não segura nada
     quad(pl.cx + pl.fx * 0.03, y, pl.cz + pl.fz * 0.03, pl.fx, pl.fz, pl.w, pl.h, uv)
     if (SHAPED[kind]) {
       const [r, n] = SHAPED[kind], sc = pl.w / 0.7
@@ -79,4 +80,6 @@ export function BuildSigns(g, d, cols, shadows, dispose, Height) {
     m.matrixAutoUpdate = false
     g.add(m); dispose.push(geo)
   }
+  // quando o chunk sair, devolve os textos ao atlas
+  if (held.length) dispose.push({ dispose: () => { for (const k of held) ReleaseSignUV(k) } })
 }

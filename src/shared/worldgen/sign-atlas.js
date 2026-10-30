@@ -1,11 +1,27 @@
 import * as THREE from 'three'
 
-// Atlas de placas: UM canvas/textura para todas as placas do mundo. Cada texto é desenhado uma única vez
-// (na primeira vez que aparece) numa prateleira livre; as placas dos chunks só guardam o retângulo UV.
+// Atlas de placas: UM canvas/textura para todas as placas do mundo. Cada texto é desenhado numa célula fixa do seu tamanho;
+// as placas dos chunks só guardam o retângulo UV. Cada chunk segura os textos que usa (SignUV) e devolve quando sai
+// (ReleaseSignUV): uma célula só recebe outro texto quando nenhum chunk carregado usa mais o texto antigo.
+// Sem célula livre (ex.: tela dividida em 4 numa cidade), a placa fica sem texto em vez de mostrar o de outra.
 const W = 2048, H = 2048
 let canvas = null, ctx = null, tex = null
-const slots = new Map()
-const cur = { a: { x: 0, y: 0, cap: 1024, h: 128 }, b: { x: 0, y: 1024, cap: 1024, h: 256 } } // faixa A: placas baixas; faixa B: painéis de direção
+// células por tamanho: largura × altura, linha inicial (y) e quantas linhas (medido: 1 grupo usa até 6/8/13/12 ao mesmo tempo)
+const POOLS = {
+  small: { w: 128, h: 128, y: 0, rows: 1 }, // PARE, velocidade, sem saída… (16 células; a última fica sempre em branco)
+  km: { w: 256, h: 128, y: 128, rows: 3 }, // marcos de km (24)
+  name: { w: 512, h: 128, y: 512, rows: 4 }, // nomes de rua e de povoado (16)
+  dir: { w: 512, h: 256, y: 1024, rows: 4 }, // painéis de direção (16)
+}
+const POOL_OF = { name: 'name', city: 'name', km: 'km', dir: 'dir' } // os outros tipos: small
+const uvOf = (x, y, w, h) => ({ u0: x / W, u1: (x + w) / W, v0: 1 - (y + h) / H, v1: 1 - y / H, w, h })
+for (const p of Object.values(POOLS)) {
+  p.cells = []
+  for (let r = 0; r < p.rows; r++) for (let x = 0; x + p.w <= W; x += p.w) p.cells.push({ x, y: p.y + r * p.h, uv: uvOf(x, p.y + r * p.h, p.w, p.h), key: null, users: 0, freed: 0 })
+}
+const BLANK = { ...POOLS.small.cells.pop().uv, blank: true } // célula nunca desenhada (transparente): quando falta lugar; não precisa devolver
+const slots = new Map() // texto -> célula
+let clock = 0, overflow = 0
 
 function init() {
   if (ctx || typeof document === 'undefined') return
@@ -25,9 +41,11 @@ export const AtlasTexture = () => { init(); return tex }
 // esquece todas as placas desenhadas (só depois de descarregar todos os chunks: as placas na tela apontam para o atlas)
 export function ResetSignAtlas() {
   slots.clear()
-  Object.assign(cur.a, { x: 0, y: 0 }); Object.assign(cur.b, { x: 0, y: 1024 })
+  for (const p of Object.values(POOLS)) for (const c of p.cells) Object.assign(c, { key: null, users: 0, freed: 0 })
   if (ctx) { ctx.clearRect(0, 0, W, H); tex.needsUpdate = true }
 }
+// para testes: quantas células estão em uso em cada tamanho e quantas placas ficaram sem lugar
+export const SignAtlasStats = () => ({ overflow, used: Object.fromEntries(Object.entries(POOLS).map(([k, p]) => [k, p.cells.filter((c) => c.users > 0).length])) })
 
 // ---------- desenhos ----------
 function fitText(c, text, maxW, size, font = 'system-ui, Arial, sans-serif', weight = 'bold') {
@@ -119,26 +137,43 @@ const DRAW = {
     })
   },
 }
-// tamanho de cada tipo no atlas: [largura, altura, faixa]
-const SIZE = { stop: [128, 128, 'a'], speed: [128, 128, 'a'], noentry: [128, 128, 'a'], deadend: [128, 128, 'a'], work: [128, 128, 'a'], xwalk: [128, 128, 'a'], park: [128, 128, 'a'], bus: [128, 128, 'a'], name: [512, 128, 'a'], city: [512, 128, 'a'], km: [256, 128, 'a'], dir: [512, 256, 'b'] }
-
-// chave "tipo:argumento" -> {u0,v0,u1,v1}. Devolve UV vazio se não houver canvas (testes sem navegador).
-export function SignUV(key) {
-  if (slots.has(key)) return slots.get(key)
-  init()
-  const [kind, ...rest] = key.split(':'), arg = rest.join(':'), [w, h, band] = SIZE[kind]
-  const c = cur[band]
-  if (c.x + w > W) { c.x = 0; c.y += c.h; if (c.y + c.h > (band === 'a' ? 1024 : H)) c.y = band === 'a' ? 0 : 1024 } // acabou o espaço: recomeça (placas antigas já saíram da tela)
-  const x = c.x, y = c.y
-  c.x += w
-  const uv = { u0: x / W, u1: (x + w) / W, v0: 1 - (y + h) / H, v1: 1 - y / H, w, h }
-  if (ctx) {
-    ctx.clearRect(x, y, w, h)
-    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip()
-    DRAW[kind](ctx, x, y, arg)
-    ctx.restore()
-    tex.needsUpdate = true
+// célula para um texto novo: uma nunca usada, senão a que ficou livre há mais tempo; null = todas em uso
+function take(pool) {
+  let best = null
+  for (const c of pool.cells) {
+    if (!c.key) return c
+    if (!c.users && (!best || c.freed < best.freed)) best = c
   }
-  slots.set(key, uv)
-  return uv
+  return best
+}
+
+// chave "tipo:argumento" -> {u0,v0,u1,v1}. Quem chama passa a segurar o texto até chamar ReleaseSignUV(chave)
+// (exceto se voltar uv.blank: faltou lugar, a placa fica sem texto e não segura nada).
+// Sem canvas (testes sem navegador) só reserva a célula, sem desenhar.
+export function SignUV(key) {
+  let cell = slots.get(key)
+  if (!cell) {
+    init()
+    const [kind, ...rest] = key.split(':'), arg = rest.join(':'), pool = POOLS[POOL_OF[kind] || 'small']
+    cell = take(pool)
+    if (!cell) { overflow++; return BLANK }
+    if (cell.key) slots.delete(cell.key) // o texto antigo não está em nenhum chunk carregado
+    cell.key = key
+    slots.set(key, cell)
+    if (ctx) {
+      const { x, y } = cell, { w, h } = pool
+      ctx.clearRect(x, y, w, h)
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip()
+      DRAW[kind](ctx, x, y, arg)
+      ctx.restore()
+      tex.needsUpdate = true
+    }
+  }
+  cell.users++
+  return cell.uv
+}
+// o chunk saiu: devolve o texto (a célula pode ser redesenhada quando ninguém mais usar)
+export function ReleaseSignUV(key) {
+  const cell = slots.get(key)
+  if (cell && cell.users > 0 && !--cell.users) cell.freed = ++clock
 }

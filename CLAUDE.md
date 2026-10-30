@@ -160,10 +160,12 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
 - **Memória (medida na F2, 10 min de sedã em linha reta, ~14 km, sem desenhar):** antes, +7,5 MB por minuto sem parar (171 → 256 MB);
   os maiores caches eram postes (25 mil itens), chão, descritor de chunk e vilas. Depois da F2: estável em ~197 MB (histórico abaixo).
   Roteiro de medição: não versionado (Playwright + `performance.memory` com `--enable-precise-memory-info --js-flags=--expose-gc`).
-- **Defeito conhecido (não corrigido, muda o visual):** o atlas de placas (`shared/worldgen/sign-atlas.js`) tem espaço para ~16 painéis de direção
-  e ~64 marcos de km. Quando enche, volta ao início e desenha por cima, mas o `slots` continua apontando as chaves antigas para lá:
-  depois de 1–2 km de estrada, uma placa pode mostrar o texto de outra. Correção proposta: contar quem usa cada região (carregar/descarregar
-  chunk) e só reaproveitar região livre. PR próprio, com OK do dono.
+- **Atlas de placas** (`shared/worldgen/sign-atlas.js`, 2048×2048, o dono pediu para não aumentar): células fixas por tamanho
+  (pequenas 15 + 1 em branco, km 24, nomes 16, painéis 16). `SignUV(chave)` segura o texto; o chunk devolve com `ReleaseSignUV` ao sair
+  (via `userData.dispose`, em `signage.js`). Célula só recebe outro texto quando ninguém mais usa o antigo. Sem lugar → `uv.blank`
+  (placa sem texto, não segura nada). Medido: 1 grupo usa no máximo 6/8/13/12; tela em 4 numa cidade passa de 16 nomes/painéis
+  → algumas placas em branco (antes: texto errado). `SignAtlasStats()` para testes.
+- Defeito visual conhecido (não corrigido): nos painéis de direção, nome longo encosta no número de km ("Covavelle5 km").
 - `npm audit` acusa falhas em dependências do Vite (nanoid, postcss, source-map-js). Já existiam; não corrigidas (perguntar ao dono antes).
 - Depois do merge do PR "limpeza", `git pull` apaga a pasta `node_modules` (ela saiu do Git) → rodar `npm install` de novo.
 - **Escala das placas:** 1 km de placa = 32 m de jogo (marcos de km a cada 32 m; cada trecho de 64 m entre cruzamentos = "2 km").
@@ -190,6 +192,8 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **correcao-placas** — atlas de placas com células fixas e contagem de quem usa cada texto. Antes: 1.813 placas montadas com texto
+  errado em 8 km de estrada (2.590 com tela em 4). Depois: 0 (simulação com o atlas real; tela em 4: 109 em branco). Só visual: mundo e replay iguais.
 - **fundacao-balanco (F3)** — `config/balance.js` com todos os números (classes, armas, habilidades, zumbis, regras, dia);
   movimento e clima recebem os números por parâmetro; `?bots=1..3` (tecla B espalha/junta, testa split screen sozinho);
   `npm run check` ganhou o replay (`scripts/sim.mjs`): código original e novo dão o mesmo hash. Mesmo mundo, mesmo jogo.
