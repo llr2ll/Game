@@ -4,8 +4,9 @@ import { WATER_Y } from '../worldgen/water'
 import { FloorAt } from '../worldgen/buildings-registry'
 
 const RADIUS = 0.45
-// Ritmo "Project Zomboid": andar firme, correr gasta fôlego, mirando anda devagar (e não corre)
-const WALK = 4.4, RUN = 7.6, AIM = 3.1, SWIM = 3.1
+// Ritmo "Project Zomboid": andar firme, correr gasta fôlego, mirando anda devagar (e não corre).
+// Números padrão; cada jogo pode passar os seus em UpdatePlayerMovement (o survivor usa config/balance.js).
+export const DEFAULT_MOVE = { walk: 4.4, run: 7.6, aim: 3.1, swim: 3.1, staminaRun: 28, staminaSwim: 9, staminaRegen: 18, tiredUntil: 30, heldSlow: [0.35, 0.12], buffSpeed: 1.25 }
 const GRAVITY = 24, JUMP = 9 // pulo ~1.7 de altura: passa por cerca (1.0), tronco e pedra
 const HEAD = 1.95, STEP_DOWN = 0.6
 
@@ -14,7 +15,7 @@ const wrap = (a) => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI
 const turnTo = (a, b, rate, dt) => { const d = wrap(b - a); return a + Math.sign(d) * Math.min(Math.abs(d), rate * dt) }
 
 // input: { mx, mz, ax, az, run } — sticks analógicos (-1..1). Mira e movimento são independentes (twin-stick).
-export function UpdatePlayerMovement(p, dt, colliders) {
+export function UpdatePlayerMovement(p, dt, colliders, tune = DEFAULT_MOVE) {
   const { mx, mz, ax, az, run, fire } = p.input
   const mm = Math.hypot(mx, mz), am = Math.hypot(ax, az)
   p.aiming = am > 0.25
@@ -26,16 +27,16 @@ export function UpdatePlayerMovement(p, dt, colliders) {
 
   // corrida gasta fôlego; se zerar, só volta a correr depois de recuperar
   p.running = !!run && k > 0.3 && !p.tired && p.stamina > 0 && wade < 0.3 && !p.aiming && !p.held
-  p.stamina = p.swim ? Math.max(0, p.stamina - 9 * dt) : p.running ? Math.max(0, p.stamina - 28 * dt) : Math.min(100, p.stamina + 18 * dt)
+  p.stamina = p.swim ? Math.max(0, p.stamina - tune.staminaSwim * dt) : p.running ? Math.max(0, p.stamina - tune.staminaRun * dt) : Math.min(100, p.stamina + tune.staminaRegen * dt)
   p.drown = p.swim && p.stamina <= 0
   if (p.stamina <= 0) p.tired = true
-  else if (p.tired && p.stamina >= 30) p.tired = false
+  else if (p.tired && p.stamina >= tune.tiredUntil) p.tired = false
 
   const grounded = p.jy <= 0.001
   // agarrado por zumbi: quase não sai do lugar (um segura = 35%, dois ou mais = 12%)
-  const held = p.held ? (p.held === 1 ? 0.35 : 0.12) : 1
-  const mul = (p.cls ? p.cls.speed : 1) * (p.buffT > 0 ? 1.25 : 1) * (p.slowAct || 1) * held
-  let speed = (p.swim ? SWIM : (p.aiming ? AIM : p.running ? RUN : WALK)) * mul * (1 - Math.min(wade, SWIM_DEPTH) * 0.6) // a água freia
+  const held = p.held ? (p.held === 1 ? tune.heldSlow[0] : tune.heldSlow[1]) : 1
+  const mul = (p.cls ? p.cls.speed : 1) * (p.buffT > 0 ? tune.buffSpeed : 1) * (p.slowAct || 1) * held
+  let speed = (p.swim ? tune.swim : (p.aiming ? tune.aim : p.running ? tune.run : tune.walk)) * mul * (1 - Math.min(wade, SWIM_DEPTH) * 0.6) // a água freia
   // virar de costas correndo: freia para girar (o corpo não muda de direção instantaneamente)
   const moveAng = Math.atan2(mx, mz)
   if (k && !p.aiming) speed *= 1 - 0.55 * Math.max(0, Math.abs(wrap(moveAng - p.facing)) - 1.2) / (Math.PI - 1.2)

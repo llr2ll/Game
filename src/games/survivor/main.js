@@ -21,6 +21,8 @@ import { wind } from '../../engine/render/style'
 import { ConnectHost } from '../../engine/net/host'
 import { CreateGame } from './rules/survival'
 import { CLASS_ORDER, CLASSES } from './abilities/classes'
+import { BALANCE } from './config/balance'
+import { CreateBots } from './bots'
 import { CreateHud } from './ui/hud'
 import { CreateLobby } from '../../engine/ui/lobby'
 import { BindKeyboard } from '../../engine/input/keyboard'
@@ -29,6 +31,8 @@ import { sfx, gate } from '../../shared/audio/sfx'
 
 const SLOT_LABELS = CLASS_ORDER.map((k) => `${CLASSES[k].icon} ${CLASSES[k].name}`) // a vaga define a classe
 const KEYS = { r: 'reload', 1: 'carbine', 2: 'shotgun', 3: 'pistol' } // teclas do Atirador (as outras são padrão do motor)
+// ?bots=1..3 na URL: jogadores controlados pelo computador, só para teste (bots.js)
+const BOTS = Math.min(3, Math.max(0, parseInt(new URLSearchParams(location.search).get('bots'), 10) || 0))
 
 // O motor e o mundo não conhecem este jogo: aqui o jogo liga as peças (água, casas, sons do mundo).
 function Wire() {
@@ -52,7 +56,7 @@ export async function LoadGame() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
   renderer.setSize(gameWindow.offsetWidth, gameWindow.offsetHeight)
   gameWindow.appendChild(renderer.domElement)
-  const climate = CreateClimate(scene, Light(scene, renderer)) // dia/noite, chuva, neblina, vento
+  const climate = CreateClimate(scene, Light(scene, renderer), { daySeconds: BALANCE.day.seconds }) // dia/noite, chuva, neblina, vento
   const entityShadows = CreateEntityShadows(scene)
   const streetLights = CreateStreetLights(scene) // postes acendem à noite, semáforos trocam de cor
   // mapa em pedaços: casas e postes entram e saem junto com cada chunk; os caches do mundo esquecem o que ficou para trás
@@ -66,7 +70,7 @@ export async function LoadGame() {
 
   const split = CreateSplitScreen(renderer, scene)
   const sound = CreateSoundscape() // vento, chuva, água, motores, passos, zumbis… (efeitos soltos: audio/sfx.js)
-  let hud, game, net
+  let hud, game, net, bots
   let phase = 'lobby' // 'lobby' | 'playing'
 
   // celulares conectados recebem "você é o Jogador N, aguardando o host" enquanto o menu está aberto
@@ -78,6 +82,7 @@ export async function LoadGame() {
   function toLobby() {
     sound.clear()
     game.clear()
+    bots.clear()
     split.reset()
     phase = 'lobby'
     lobby.show()
@@ -91,6 +96,7 @@ export async function LoadGame() {
       split.reset()
       lobby.hide()
       for (const e of entries) game.addPlayer(e.id, e.name, e.slot)
+      if (BOTS) bots.add([0, 1, 2, 3].filter((s) => !entries.some((e) => e.slot === s))) // bots nas vagas livres
     },
     onKick: (id) => net.send(id, { t: 'kick', msg: 'Você foi removido da sala' }),
     onChange: notifyPhones,
@@ -113,9 +119,10 @@ export async function LoadGame() {
     onInput: (id, m) => game.setInput(id, m),
     onAct: (id, a) => game.act(id, a),
   })
-  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < 0.24 || climate.time > 0.78, loaded: chunks.loaded })
+  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < BALANCE.day.nightTo || climate.time > BALANCE.day.nightFrom, loaded: chunks.loaded })
   events.on('vehicle-spot', (p) => game.vehicles.register(p)) // vaga na estrada → carro dirigível
   hud = CreateHud(game, climate)
+  bots = CreateBots(game, BOTS)
   BindKeyboard(game, KEYS)
   setInterval(notifyPhones, 1000)
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && phase === 'playing') toLobby() })
@@ -134,6 +141,7 @@ export async function LoadGame() {
 
   let orbit = 0
   function draw(dt) {
+    if (phase === 'playing') bots.update(dt) // só com ?bots=
     game.update(dt)
     wind.value += dt // vento: só um uniform; o balanço acontece na GPU
     const list = [...game.players.values()]

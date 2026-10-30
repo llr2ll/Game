@@ -5,19 +5,24 @@ import { rayBox, HitWall } from '../../../engine/world/collision'
 import { WaterDepth, GroundAt } from '../../../shared/worldgen/sidewalk'
 import { GRENADE_GEO } from '../../../shared/characters/kits'
 import { sfx, gate } from '../../../shared/audio/sfx'
+import { BALANCE } from '../config/balance'
 
 // Uma classe por vaga: Jogador 1 Atirador · 2 Samurai · 3 Mago · 4 Bardo.
 // Cada uma tem o ataque principal (stick direito / mouse) e até três botões (cd = recarga em segundos).
 export const CLASS_ORDER = ['gunner', 'samurai', 'mage', 'bard']
+// vida, velocidade e recargas (hp, speed, cd) vêm de config/balance.js
+const BC = BALANCE.classes
 export const CLASSES = {
-  gunner: { id: 'gunner', name: 'Atirador', icon: '🔫', hp: 100, speed: 1, ranged: true, cd: [0, 0, 7], buttons: ['Trocar arma', 'Recarregar', 'Granada'] },
-  samurai: { id: 'samurai', name: 'Samurai', icon: '⚔️', hp: 130, speed: 1.08, ranged: false, cd: [3.5, 7], buttons: ['Investida', 'Redemoinho'] },
-  mage: { id: 'mage', name: 'Mago', icon: '🔮', hp: 85, speed: 0.97, ranged: true, cd: [6, 9], buttons: ['Meteoro', 'Nova de gelo'] },
-  bard: { id: 'bard', name: 'Bardo', icon: '🪕', hp: 100, speed: 1.02, ranged: true, cd: [12, 15], buttons: ['Canção de cura', 'Balada da coragem'] },
+  gunner: { id: 'gunner', name: 'Atirador', icon: '🔫', ...BC.gunner, ranged: true, buttons: ['Trocar arma', 'Recarregar', 'Granada'] },
+  samurai: { id: 'samurai', name: 'Samurai', icon: '⚔️', ...BC.samurai, ranged: false, buttons: ['Investida', 'Redemoinho'] },
+  mage: { id: 'mage', name: 'Mago', icon: '🔮', ...BC.mage, ranged: true, buttons: ['Meteoro', 'Nova de gelo'] },
+  bard: { id: 'bard', name: 'Bardo', icon: '🪕', ...BC.bard, ranged: true, buttons: ['Canção de cura', 'Balada da coragem'] },
 }
 export const ClassOf = (idx) => CLASSES[CLASS_ORDER[idx % 4]]
 
-const MANA = 100, MANA_REGEN = 15
+// números das habilidades: config/balance.js
+const G = BALANCE.gunner, S = BALANCE.samurai, M = BALANCE.mage, B = BALANCE.bard
+const MANA = M.mana, MANA_REGEN = M.manaRegen
 const wrap = (a) => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI }
 const tracerGeo = new THREE.BoxGeometry(0.04, 0.04, 1)
 const tracerMat = new THREE.MeshBasicMaterial({ color: 0xffe9a0 })
@@ -51,7 +56,7 @@ export function CreateAbilities(ctx) {
   const noise = (p, r) => ctx.noise && ctx.noise(p.x, p.z, r)
   const dirOf = (p) => (p.aiming ? p.aimAngle : p.facing)
   const aligned = (p, tol) => Math.abs(wrap(p.aimAngle - p.facing)) < tol
-  const dmgMul = (p) => (p.buffT > 0 ? 1.35 : 1)
+  const dmgMul = (p) => (p.buffT > 0 ? B.courage.damage : 1)
   const act = (p, name, dur, slow = 1) => { p.model.play(name, dur); p.atk = Math.max(p.atk, dur * 0.95); p.slowAct = slow; p.slowT = dur }
   const knock = (e, from, power) => { const dx = e.x - from.x, dz = e.z - from.z, d = Math.hypot(dx, dz) || 1; return [(dx / d) * power, (dz / d) * power] }
 
@@ -89,7 +94,7 @@ export function CreateAbilities(ctx) {
     fx.burst(x, y + 0.5, z, 0x4a3a2a, 8, 5, 0.9, 1.6)
     for (let i = 0; i < 5; i++) fx.puff(x + (Math.random() - 0.5) * r, y + 0.3, z + (Math.random() - 0.5) * r, 0xb4b0b8, 0.7 + Math.random() * 0.4, 1.1 + Math.random() * 0.5, 1.8)
     if (WaterDepth(x, z) > 0.1) wfx.splash(x, z, 18, 1.4)
-    if (ctx.noise) ctx.noise(x, z, 38)
+    if (ctx.noise) ctx.noise(x, z, BALANCE.explosionNoise)
     area(p, x, z, r, dmg, power)
   }
 
@@ -116,7 +121,7 @@ export function CreateAbilities(ctx) {
     if (s.mag <= 0) return startReload(p)
     p.cool = w.rate
     s.mag--
-    noise(p, p.weapon === 'pistol' ? 22 : 30) // tiro chama zumbis de longe
+    noise(p, p.weapon === 'pistol' ? G.pistolNoise : G.shotNoise) // tiro chama zumbis de longe
     sfx(p.weapon, { x: p.x, z: p.z, vol: p.weapon === 'carbine' ? 0.8 : 1 })
     if (p.weapon !== 'shotgun' && gate('casing', 0.18)) sfx('casing', { x: p.x, z: p.z, delay: 0.3 })
     p.model.kick()
@@ -159,19 +164,19 @@ export function CreateAbilities(ctx) {
       if (p.dead) return
       sfx('throw', { x: p.x, z: p.z })
       p.model.muzzle(tmp) // sai da altura da mão
-      const tx = sx + Math.sin(a) * 9, tz = sz + Math.cos(a) * 9
+      const tx = sx + Math.sin(a) * G.grenade.distance, tz = sz + Math.cos(a) * G.grenade.distance
       const m = new THREE.Mesh(GRENADE_GEO, MAT.solid)
       m.scale.setScalar(1.3)
       scene.add(m)
-      nades.push({ p, m, x0: p.x, z0: p.z, y0: tmp.y, tx, tz, t: 0, T: 0.8 })
+      nades.push({ p, m, x0: p.x, z0: p.z, y0: tmp.y, tx, tz, t: 0, T: G.grenade.flight })
     })
   }
 
   // ---------------------------------------------------------------- SAMURAI
   function slash(p) {
     if (p.atk > 0 || !aligned(p, 0.7)) return
-    p.combo = p.comboT < 0.8 ? (p.combo + 1) % 3 : 0
-    const dur = [0.38, 0.38, 0.52][p.combo], n = p.combo
+    p.combo = p.comboT < S.combo.window ? (p.combo + 1) % 3 : 0
+    const dur = S.combo.time[p.combo], n = p.combo
     act(p, `slash${n + 1}`, dur, 0.45)
     p.comboT = -dur
     const a = p.aimAngle
@@ -181,14 +186,14 @@ export function CreateAbilities(ctx) {
       const y = (p.y || 0) + (n === 2 ? 0.7 : 1.1)
       fx.arc(p.x, y, p.z, a + (n === 1 ? -0.2 : n === 0 ? 0.2 : 0), 0.6, 2.9, n === 2 ? 1.0 : 2.3, n === 2 ? 0xc8e4ff : 0xeaf4ff, 0.2, 0.35)
       sfx('swing', { x: p.x, z: p.z, heavy: n === 2, cls: p.cls.id })
-      if (cone(p, a, 2.7, n === 2 ? 0.6 : 1.15, [2.8, 2.8, 4.8][n], [4, 4, 10][n])) sfx('slice', { x: p.x, z: p.z })
-      noise(p, 7)
+      if (cone(p, a, S.combo.range, S.combo.angle[n], S.combo.damage[n], S.combo.knock[n])) sfx('slice', { x: p.x, z: p.z })
+      noise(p, S.combo.noise)
     })
   }
   function dash(p) {
     const a = dirOf(p)
     act(p, 'dash', 0.42, 1)
-    p.dashT = 0.22; p.dashA = a; p.dashV = 30; p.invulnT = 0.35; p.dashHit = new Set()
+    p.dashT = S.dash.time; p.dashA = a; p.dashV = S.dash.speed; p.invulnT = S.dash.invulnerable; p.dashHit = new Set()
     p.facing = p.aimAngle = a
     fx.arc(p.x, (p.y || 0) + 1, p.z, a + Math.PI, 0.2, 1.2, 1.2, 0xbfe0ff, 0.25)
     sfx('dash', { x: p.x, z: p.z })
@@ -199,40 +204,40 @@ export function CreateAbilities(ctx) {
     for (const t of [0.14, 0.3]) later(t, () => {
       if (p.dead) return
       fx.arc(p.x, (p.y || 0) + 1.0, p.z, p.facing, 0.5, 3.4, Math.PI * 2, 0xd8ecff, 0.25, 0.3)
-      area(p, p.x, p.z, 3.2, 2.8, 8)
+      area(p, p.x, p.z, S.spin.radius, S.spin.damage, S.spin.knock)
     })
   }
 
   // ---------------------------------------------------------------- MAGO
   function bolt(p) {
-    if (p.cool > 0 || p.mana < 7 || !aligned(p, 0.35)) return
-    p.cool = 0.3; p.mana -= 7
+    if (p.cool > 0 || p.mana < M.bolt.mana || !aligned(p, 0.35)) return
+    p.cool = M.bolt.cooldown; p.mana -= M.bolt.mana
     act(p, 'cast', 0.3, 1)
     p.model.kick()
     p.model.muzzle(tmp)
     const m = new THREE.Mesh(boltGeo, boltMat)
     m.position.copy(tmp)
     scene.add(m)
-    bolts.push({ p, m, a: p.aimAngle, life: 1.5, y: tmp.y })
+    bolts.push({ p, m, a: p.aimAngle, life: M.bolt.life, y: tmp.y })
     sfx('bolt', { x: p.x, z: p.z })
-    noise(p, 9)
+    noise(p, M.bolt.noise)
   }
   function meteor(p) {
-    if (p.mana < 25) return false
-    p.mana -= 25
-    const a = dirOf(p), tx = p.x + Math.sin(a) * 8.5, tz = p.z + Math.cos(a) * 8.5, ty = GroundAt(tx, tz)
+    if (p.mana < M.meteor.mana) return false
+    p.mana -= M.meteor.mana
+    const a = dirOf(p), tx = p.x + Math.sin(a) * M.meteor.distance, tz = p.z + Math.cos(a) * M.meteor.distance, ty = GroundAt(tx, tz)
     act(p, 'meteor', 0.85, 0.35)
     fx.ring(tx, ty, tz, 0xff4a2a, 3.6, 3.8, 1.1, { add: false })
     fx.ring(tx, ty, tz, 0xff6a2a, 0.3, 3.8, 1.1, { add: false, fill: true })
     const m = new THREE.Mesh(meteorGeo, meteorMat)
     scene.add(m)
-    meteors.push({ p, m, tx, tz, ty, t: 0, T: 1.05 })
+    meteors.push({ p, m, tx, tz, ty, t: 0, T: M.meteor.fall })
     sfx('charge', { x: p.x, z: p.z })
-    sfx('meteorfall', { x: tx, z: tz, time: 1.05 })
+    sfx('meteorfall', { x: tx, z: tz, time: M.meteor.fall })
   }
   function nova(p) {
-    if (p.mana < 20) return false
-    p.mana -= 20
+    if (p.mana < M.nova.mana) return false
+    p.mana -= M.nova.mana
     act(p, 'nova', 0.6, 0.2)
     later(0.32, () => {
       if (p.dead) return
@@ -241,8 +246,8 @@ export function CreateAbilities(ctx) {
       fx.ring(p.x, y, p.z, 0x9fe8ff, 0.3, 5.5, 0.7, { add: false, fill: true })
       fx.burst(p.x, y + 0.3, p.z, 0xcff4ff, 22, 8, 0.6, 1.2)
       sfx('nova', { x: p.x, z: p.z })
-      area(p, p.x, p.z, 5.5, 2, 5, (e) => {
-        e.slowT = 4
+      area(p, p.x, p.z, M.nova.radius, M.nova.damage, M.nova.knock, (e) => {
+        e.slowT = M.nova.slowTime
         if (gate('freeze', 0.06)) sfx('freeze', { x: e.x, z: e.z, delay: 0.1 })
         if (!e.ice) { e.ice = new THREE.Mesh(iceGeo, iceMat); e.ice.position.y = 0.25; e.ice.scale.setScalar(e.radius * 1.6); e.group.add(e.ice) }
       })
@@ -252,28 +257,28 @@ export function CreateAbilities(ctx) {
   // ---------------------------------------------------------------- BARDO
   function wave(p) {
     if (p.cool > 0 || !aligned(p, 0.4)) return
-    p.cool = 0.55
+    p.cool = B.wave.cooldown
     p.model.kick()
     p.model.muzzle(tmp)
     const a = p.aimAngle
     fx.arc(p.x, tmp.y - 0.2, p.z, a, 0.8, 6.8, 1.1, 0xffe27a, 0.4, 0.3)
     fx.arc(p.x, tmp.y - 0.2, p.z, a, 0.5, 5.2, 0.9, 0xb8f2ff, 0.32, 0.25)
     fx.note(tmp.x, tmp.y, tmp.z, Math.random() < 0.5 ? 0xffe26a : 0x9cf0ff)
-    cone(p, a, 6.5, 0.55, 2.1, 8)
-    noise(p, 12)
+    cone(p, a, B.wave.range, B.wave.angle, B.wave.damage, B.wave.knock)
+    noise(p, B.wave.noise)
     sfx('strum', { x: p.x, z: p.z })
   }
   function allies(p, r) { return [...players.values()].filter((o) => Math.hypot(o.x - p.x, o.z - p.z) < r) }
   function song(p) {
     act(p, 'song', 1.0, 0.4)
-    noise(p, 18) // música alta: cura, mas atrai
+    noise(p, B.song.noise) // música alta: cura, mas atrai
     sfx('song', { x: p.x, z: p.z })
     fx.ring(p.x, p.gy || 0, p.z, 0x7aff9a, 0.5, 9, 0.9)
     later(0.35, () => {
       if (p.dead) return
-      for (const o of allies(p, 9)) {
-        if (o.dead) { if (Math.hypot(o.x - p.x, o.z - p.z) < 5.5) { o.dead = false; o.hp = o.max * 0.35; o.model.hurt(); sfx('revive', { x: o.x, z: o.z }) } else continue } // reviver quem caiu perto
-        else { o.hp = Math.min(o.max, o.hp + 40); sfx('heal', { x: o.x, z: o.z, delay: Math.random() * 0.15 }) }
+      for (const o of allies(p, B.song.radius)) {
+        if (o.dead) { if (Math.hypot(o.x - p.x, o.z - p.z) < B.song.reviveRadius) { o.dead = false; o.hp = o.max * B.song.reviveHp; o.model.hurt(); sfx('revive', { x: o.x, z: o.z }) } else continue } // reviver quem caiu perto
+        else { o.hp = Math.min(o.max, o.hp + B.song.heal); sfx('heal', { x: o.x, z: o.z, delay: Math.random() * 0.15 }) }
         fx.ring(o.x, o.gy || 0, o.z, 0x7aff9a, 0.2, 1.4, 0.7)
         for (let i = 0; i < 3; i++) fx.note(o.x + (Math.random() - 0.5) * 0.8, (o.y || 0) + 1.6, o.z + (Math.random() - 0.5) * 0.8, 0x7aff9a)
       }
@@ -281,14 +286,14 @@ export function CreateAbilities(ctx) {
   }
   function courage(p) {
     act(p, 'courage', 0.9, 0.4)
-    noise(p, 18)
+    noise(p, B.courage.noise)
     sfx('courage', { x: p.x, z: p.z })
     fx.ring(p.x, p.gy || 0, p.z, 0xffd24a, 0.5, 9, 0.9)
     later(0.4, () => {
       if (p.dead) return
-      for (const o of allies(p, 9)) {
+      for (const o of allies(p, B.courage.radius)) {
         if (o.dead) continue
-        o.buffT = 8
+        o.buffT = B.courage.time
         sfx('buff', { x: o.x, z: o.z, delay: 0.5 + Math.random() * 0.15 })
         fx.ring(o.x, o.gy || 0, o.z, 0xffd24a, 0.2, 1.4, 0.7)
         fx.burst(o.x, (o.y || 0) + 1.8, o.z, 0xffd24a, 8, 3, 0.6)
@@ -323,7 +328,7 @@ export function CreateAbilities(ctx) {
       p.buffT = Math.max(0, p.buffT - dt)
       if ((p.slowT -= dt) <= 0) p.slowAct = 1
       for (let i = 0; i < p.cd.length; i++) p.cd[i] = Math.max(0, p.cd[i] - dt)
-      p.mana = Math.min(MANA, p.mana + MANA_REGEN * dt * (p.firing ? 0.4 : 1))
+      p.mana = Math.min(MANA, p.mana + MANA_REGEN * dt * (p.firing ? M.manaRegenAttacking : 1))
       if (p.dead) return
       if (p.weapon && p.reload > 0 && (p.reload -= dt) <= 0) {
         const w = WEAPONS[p.weapon], s = p.ammo[p.weapon]
@@ -333,9 +338,9 @@ export function CreateAbilities(ctx) {
       // investida: corta quem estiver no caminho
       if (p.dashT > 0 && p.dashHit) {
         for (const e of enemies) {
-          if (e.dying > 0 || p.dashHit.has(e) || !sameFloor(e, p) || Math.hypot(e.x - p.x, e.z - p.z) > e.radius + 1.3) continue
+          if (e.dying > 0 || p.dashHit.has(e) || !sameFloor(e, p) || Math.hypot(e.x - p.x, e.z - p.z) > e.radius + S.dash.reach) continue
           p.dashHit.add(e)
-          ctx.hit(e, 5 * dmgMul(p), p, Math.cos(p.dashA) * 6 * (Math.random() < 0.5 ? 1 : -1), -Math.sin(p.dashA) * 6)
+          ctx.hit(e, S.dash.damage * dmgMul(p), p, Math.cos(p.dashA) * S.dash.knock * (Math.random() < 0.5 ? 1 : -1), -Math.sin(p.dashA) * S.dash.knock)
           fx.burst(e.x, 1.2, e.z, 0xeaf4ff, 6, 4, 0.35)
         }
         if (Math.random() < 0.6) fx.puff(p.x, (p.gy || 0) + 0.2, p.z, 0xd8d0c0, 0.35, 0.45, 0.5)
@@ -352,22 +357,22 @@ export function CreateAbilities(ctx) {
       for (let i = bolts.length - 1; i >= 0; i--) {
         const b = bolts[i]
         b.life -= dt
-        let tgt = null, bd = 14
+        let tgt = null, bd = M.bolt.seek
         for (const e of enemies) {
           if (e.dying > 0 || !sameFloor(e, b.p)) continue
           const dx = e.x - b.m.position.x, dz = e.z - b.m.position.z, d = Math.hypot(dx, dz)
           if (d < bd && Math.abs(wrap(Math.atan2(dx, dz) - b.a)) < 0.5) { bd = d; tgt = e }
         }
-        if (tgt) { const want = Math.atan2(tgt.x - b.m.position.x, tgt.z - b.m.position.z); b.a += Math.max(-3 * dt, Math.min(3 * dt, wrap(want - b.a))) }
-        b.m.position.x += Math.sin(b.a) * 19 * dt
-        b.m.position.z += Math.cos(b.a) * 19 * dt
+        if (tgt) { const want = Math.atan2(tgt.x - b.m.position.x, tgt.z - b.m.position.z); b.a += Math.max(-M.bolt.turn * dt, Math.min(M.bolt.turn * dt, wrap(want - b.a))) }
+        b.m.position.x += Math.sin(b.a) * M.bolt.speed * dt
+        b.m.position.z += Math.cos(b.a) * M.bolt.speed * dt
         b.m.rotation.y += dt * 12
         if (Math.random() < 0.5) fx.burst(b.m.position.x, b.m.position.y, b.m.position.z, 0xffe08a, 1, 0.6, 0.25, 0.7)
         let hit = null
         for (const e of enemies) if (e.dying <= 0 && sameFloor(e, b.p) && Math.hypot(e.x - b.m.position.x, e.z - b.m.position.z) < e.radius + 0.25) { hit = e; break }
         const wall = HitWall(b.m.position.x, b.m.position.z, b.p.lv || 0)
         if (hit || wall || b.life <= 0) {
-          if (hit) ctx.hit(hit, 2.7 * dmgMul(b.p), b.p, Math.sin(b.a) * 4, Math.cos(b.a) * 4)
+          if (hit) ctx.hit(hit, M.bolt.damage * dmgMul(b.p), b.p, Math.sin(b.a) * M.bolt.knock, Math.cos(b.a) * M.bolt.knock)
           if (hit || wall) { sfx('zap', { x: b.m.position.x, z: b.m.position.z }); fx.flash(b.m.position.x, b.m.position.y, b.m.position.z, 0.5, 0xffc94a, 0.2); fx.burst(b.m.position.x, b.m.position.y, b.m.position.z, 0xffd86a, 6, 3, 0.35) }
           scene.remove(b.m); bolts.splice(i, 1)
         }
@@ -379,7 +384,7 @@ export function CreateAbilities(ctx) {
         const k = Math.min(1, n.t / n.T), gy = GroundAt(n.tx, n.tz)
         n.m.position.set(n.x0 + (n.tx - n.x0) * k, n.y0 + (gy + 0.1 - n.y0) * k + Math.sin(k * Math.PI) * 2.6, n.z0 + (n.tz - n.z0) * k)
         n.m.rotation.x += dt * 14
-        if (k >= 1) { scene.remove(n.m); nades.splice(i, 1); explode(n.p, n.tx, n.tz, 3.6, 9, 11, 0xffa040); sfx('explosion', { x: n.tx, z: n.tz }) }
+        if (k >= 1) { scene.remove(n.m); nades.splice(i, 1); explode(n.p, n.tx, n.tz, G.grenade.radius, G.grenade.damage, G.grenade.knock, 0xffa040); sfx('explosion', { x: n.tx, z: n.tz }) }
       }
       // meteoros: caem em diagonal no alvo marcado
       for (let i = meteors.length - 1; i >= 0; i--) {
@@ -389,7 +394,7 @@ export function CreateAbilities(ctx) {
         m.m.position.set(m.tx - 4 * (1 - e), m.ty + 16 * (1 - e) + 0.4, m.tz - 4 * (1 - e))
         m.m.rotation.x += dt * 6
         if (Math.random() < 0.8) fx.puff(m.m.position.x, m.m.position.y, m.m.position.z, 0xff9a3a, 0.7, 0.5, 0.2)
-        if (k >= 1) { scene.remove(m.m); meteors.splice(i, 1); explode(m.p, m.tx, m.tz, 3.9, 11, 12, 0xff6a2a); sfx('fireboom', { x: m.tx, z: m.tz }) }
+        if (k >= 1) { scene.remove(m.m); meteors.splice(i, 1); explode(m.p, m.tx, m.tz, M.meteor.radius, M.meteor.damage, M.meteor.knock, 0xff6a2a); sfx('fireboom', { x: m.tx, z: m.tz }) }
       }
     },
     // texto e botões para o HUD e o celular

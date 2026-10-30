@@ -63,6 +63,8 @@ Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador
 | `src/shared/fx/` | Efeitos visuais, sangue, respingos | Explosão da granada |
 | `src/shared/audio/` | Todos os sons, criados na hora | Chuva, motor, gemido |
 | `src/games/survivor/main.js` | Liga todas as peças deste jogo | — |
+| `src/games/survivor/config/` | **Todos os números para ajustar o jogo** (`balance.js`) | Vida do Samurai, dano da espingarda |
+| `src/games/survivor/bots.js` | Jogadores do computador, só para teste (`?bots=3`) | 🤖 Bot 1 no placar |
 | `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, suprimentos, fim de jogo | "FIM DE JOGO · sobreviveram 03:12" |
 | `src/games/survivor/abilities/` | As 4 classes e as habilidades | Samurai dando a investida |
 | `src/games/survivor/enemies/` | O que os zumbis veem, ouvem e fazem | Zumbi vindo atrás do barulho do tiro |
@@ -80,6 +82,12 @@ aparecem no mesmo lugar em toda partida. Hoje não existe "semente" para sortear
 
 **Tudo é desenhado por código.** Não há arquivos de modelo 3D nem de som. Casas, zumbis, carros e sons são montados na hora.
 Isso deixa o jogo leve para baixar, mas toda mudança visual passa por código.
+
+## Como ajustar o jogo
+Todos os números da jogabilidade estão num arquivo só: **`src/games/survivor/config/balance.js`**.
+Vida e velocidade das classes, dano e alcance das armas e habilidades, quantos zumbis, o que eles veem e ouvem,
+quanto tempo para voltar depois de cair, duração do dia… Cada linha tem um comentário dizendo o que muda.
+Mude um número, salve, e o jogo recarrega sozinho (com `npm run dev` rodando).
 
 ## Como testar
 - Depois de cada PR: siga `docs/TESTE-MANUAL.md` (5 minutos).

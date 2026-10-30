@@ -6,6 +6,7 @@ import { InZone } from '../../../shared/worldgen/layout'
 import { CreateZombieModel, VARIANTS, GETUP_T } from '../../../shared/creatures/zombie-model'
 import { Navigate, wrap, turnTo } from '../../../engine/world/pathing'
 import { sfx, gate } from '../../../shared/audio/sfx'
+import { BALANCE } from '../config/balance'
 
 // Zumbis no estilo Project Zomboid: andam devagar e em bando, enxergam num cone à frente e ouvem barulho
 // (tiro, explosão, carro, corrida). Chegando perto dão o bote e AGARRAM: o jogador fica preso e leva mordidas
@@ -15,11 +16,13 @@ import { sfx, gate } from '../../../shared/audio/sfx'
 // Estados: wander (vaga) · investigate (vai até um barulho) · chase · lunge (bote) · grab · stagger (tropeça)
 //          down (caído) · getup · feed (come quem caiu) · dead (corpo no chão, afunda e some)
 const RADIUS = 0.42
-const SPEED = { wander: 0.6, investigate: 1.2, chase: 1.9, fast: 3.3 }
-const SIGHT = { day: 16, night: 9 }, FOV = 1.2, FEEL = 3.2, LOSE_T = 6 // FEEL = percebe por perto mesmo sem ver
-const REACH = 0.95, HOLD = 0.68, LUNGE_T = 0.42
-const BITE = [6, 9], SCRATCH = 3
-const SPAWN_MIN = 24, SPAWN_MAX = 36, FAR = 52, MAX_ZOMBIES = 55, CORPSE_T = 14, MAX_CORPSES = 20
+// números de jogo (visão, audição, velocidade, vida, quantidade, renascimento…): config/balance.js
+const Z = BALANCE.zombies, PL = BALANCE.player
+const SPEED = Z.speed
+const SIGHT = Z.sight, FOV = Z.sight.fov, FEEL = Z.sight.feel, LOSE_T = Z.sight.lose // FEEL = percebe por perto mesmo sem ver
+const REACH = Z.attack.reach, HOLD = Z.attack.hold, LUNGE_T = Z.attack.lunge
+const BITE = Z.attack.bite, SCRATCH = Z.attack.scratch
+const SPAWN_MIN = Z.spawn.min, SPAWN_MAX = Z.spawn.max, FAR = Z.spawn.far, MAX_ZOMBIES = Z.max, CORPSE_T = Z.corpseTime, MAX_CORPSES = Z.maxCorpses
 const BLOOD = 0x6a1612
 
 const _v = new THREE.Vector3()
@@ -44,11 +47,12 @@ export function CreateHorde(ctx) {
   }
   // (re)nasce num ponto: também usado para reaproveitar quem ficou longe demais
   function reset(e, x, z) {
-    const fast = Math.random() < Math.min(0.08 + st.time / 1200, 0.3) // corredores ficam mais comuns com o tempo
-    const hp = fast ? rnd(4.5, 5.5) : rnd(7, 9.5) // ~4 tiros de pistola, 3 golpes de katana
+    const R = Z.runner, N = Z.normal
+    const fast = Math.random() < Math.min(R.chance + st.time / R.rampSeconds, R.chanceMax) // corredores ficam mais comuns com o tempo
+    const hp = fast ? rnd(R.hp[0], R.hp[1]) : rnd(N.hp[0], N.hp[1]) // ~4 tiros de pistola, 3 golpes de katana
     Object.assign(e, {
       x, z, lx: x, lz: z, fy: GroundAt(x, z), lv: 0, heading: Math.random() * Math.PI * 2, vel: 0,
-      hp, maxHp: hp, fast, score: fast ? 15 : 10, speed: fast ? rnd(3.0, 3.5) : rnd(1.6, 2.15),
+      hp, maxHp: hp, fast, score: fast ? R.score : N.score, speed: fast ? rnd(R.speed[0], R.speed[1]) : rnd(N.speed[0], N.speed[1]),
       state: 'wander', stT: 0, dur: 0, target: null, seenT: 0, tx: x, tz: z, goal: null, waitT: rnd(0, 3),
       senseT: Math.random() * 0.3, cool: 0.5, biteT: 0, bite: 0, hitT: 0, imp: 0, dying: 0, fallDir: -1,
       kx: 0, kz: 0, slowT: 0, path: null, pathT: 0, unstick: 0, stuckT: 0, sx: x, sz: z, moving: 0, t: Math.random() * 10,
@@ -130,7 +134,7 @@ export function CreateHorde(ctx) {
   // retorna true se matou
   function damage(e, dmg, kx, kz, p) {
     if (e.state === 'dead') return false
-    if (e.state === 'down') dmg *= 1.3
+    if (e.state === 'down') dmg *= Z.downDamage
     e.hp -= dmg
     e.hitT = 0.12
     e.kx += kx; e.kz += kz; e.imp += Math.hypot(kx, kz)
@@ -182,9 +186,9 @@ export function CreateHorde(ctx) {
   // Empurrão (todas as classes): solta quem agarrou, faz tropeçar ou derruba até 3 na frente; zumbi caído no pé toma pisão
   function shove(p) {
     if (p.dead || p.vehicle || p.swim || p.shoveCd > 0 || p.atk > 0.2) return
-    p.shoveCd = 0.55
+    p.shoveCd = PL.shoveCooldown
     const tired = p.stamina < 10
-    p.stamina = Math.max(0, p.stamina - 9)
+    p.stamina = Math.max(0, p.stamina - PL.shoveStamina)
     let a = p.aiming ? p.aimAngle : p.facing
     const mine = list.filter((e) => e.state === 'grab' && e.target === p)
     if (mine.length) a = Math.atan2(mine[0].x - p.x, mine[0].z - p.z)
@@ -225,7 +229,7 @@ export function CreateHorde(ctx) {
       if (!e.target) e.target = p
       fx.puff(e.x, e.fy + 0.2, e.z, 0xc8bca8, 0.35, 0.45, 0.4)
     }
-    noise(p.x, p.z, 5)
+    noise(p.x, p.z, PL.shoveNoise)
   }
 
   // ---------------------------------------------------------------- um zumbi, por quadro. true = remover
@@ -250,7 +254,7 @@ export function CreateHorde(ctx) {
       e.x += e.kx * dt; e.z += e.kz * dt; e.kx *= kd; e.kz *= kd
     } else e.kx = e.kz = 0
     if (e.imp > 0) react(e)
-    const slow = (e.slowT = Math.max(0, e.slowT - dt)) > 0 ? 0.4 : 1
+    const slow = (e.slowT = Math.max(0, e.slowT - dt)) > 0 ? Z.iceSlow : 1
     if (e.ice) e.ice.visible = slow < 1
     if ((e.senseT -= dt) <= 0 && (e.state === 'wander' || e.state === 'investigate' || e.state === 'chase' || e.state === 'feed')) {
       e.senseT = rnd(0.22, 0.34)
@@ -298,8 +302,8 @@ export function CreateHorde(ctx) {
         if (e.stT < e.dur * 0.6 && d > 0.75 + (p.pad || 0)) { e.x += (dx / d) * 1.6 * slow * dt; e.z += (dz / d) * 1.6 * slow * dt }
         if (e.stT < e.dur) break
         const ok = d <= REACH + 0.35 + (p.pad || 0) && sameLv(e, p) && p.jy < 0.9 && !(p.invulnT > 0)
-        if (ok && p.vehicle) { ctx.hurt(p, 5); e.cool = 1.1; setState(e, 'chase'); sfx('bang', { x: e.x, z: e.z }) } // bate na lataria
-        else if (ok && !p.swim) { setState(e, 'grab'); sfx('grab', { x: p.x, z: p.z }); e.biteT = rnd(0.7, 1.0); ctx.hurt(p, SCRATCH); fx.burst(p.x, (p.y || 0) + 1.2, p.z, BLOOD, 4, 2, 0.35, 0.8) }
+        if (ok && p.vehicle) { ctx.hurt(p, Z.attack.car); e.cool = 1.1; setState(e, 'chase'); sfx('bang', { x: e.x, z: e.z }) } // bate na lataria
+        else if (ok && !p.swim) { setState(e, 'grab'); sfx('grab', { x: p.x, z: p.z }); e.biteT = rnd(Z.attack.firstBite[0], Z.attack.firstBite[1]); ctx.hurt(p, SCRATCH); fx.burst(p.x, (p.y || 0) + 1.2, p.z, BLOOD, 4, 2, 0.35, 0.8) }
         else { e.cool = 0.8; setState(e, 'chase') }
         break
       }
@@ -312,7 +316,7 @@ export function CreateHorde(ctx) {
         e.x += (p.x + (dx / d) * HOLD - e.x) * k; e.z += (p.z + (dz / d) * HOLD - e.z) * k
         e.heading = turnTo(e.heading, Math.atan2(-dx, -dz), 12, dt)
         if ((e.biteT -= dt) <= 0) {
-          e.biteT = rnd(1.1, 1.6); e.bite = 1
+          e.biteT = rnd(Z.attack.biteEvery[0], Z.attack.biteEvery[1]); e.bite = 1
           sfx('bite', { x: p.x, z: p.z })
           ctx.hurt(p, rnd(BITE[0], BITE[1]))
           fx.burst(p.x, (p.y || 0) + 1.4, p.z, BLOOD, 6, 2.5, 0.45, 0.9)
@@ -364,9 +368,10 @@ export function CreateHorde(ctx) {
   // ---------------------------------------------------------------- população: mantém a horda em volta dos jogadores
   function wanted(alive) {
     if (!alive.length) return 0
-    let n = 18 + 7 * (alive.length - 1) + Math.floor(st.time / 45) * 2
-    if (ctx.night()) n *= 1.3
-    if (alive.some((p) => InZone(p.x, p.z, 10))) n *= 1.25 // povoados e cidades: mais gente (morta)
+    const P = Z.population
+    let n = P.base + P.perPlayer * (alive.length - 1) + Math.floor(st.time / P.growEvery) * P.growBy
+    if (ctx.night()) n *= P.night
+    if (alive.some((p) => InZone(p.x, p.z, 10))) n *= P.town // povoados e cidades: mais gente (morta)
     return Math.min(MAX_ZOMBIES, Math.round(n))
   }
   // ponto livre num anel em volta de um jogador, fora da vista, em chunk carregado (com colisores)
@@ -431,7 +436,7 @@ export function CreateHorde(ctx) {
       st.noiseT = 0.4
       for (const p of alive) {
         const v = p.vehicle
-        const r = v ? (v.seats[0] && Math.hypot(v.vx, v.vz) > 1 ? 18 : 0) : p.running ? 8 : p.speed > 0.5 ? 3 : 0
+        const H = Z.hearing, r = v ? (v.seats[0] && Math.hypot(v.vx, v.vz) > 1 ? H.car : 0) : p.running ? H.run : p.speed > 0.5 ? H.walk : 0
         if (r) noise(p.x, p.z, r)
       }
     }

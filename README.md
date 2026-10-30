@@ -17,6 +17,7 @@ npm run dev         # terminal 2: jogo (porta 5173)
 Abra no PC `http://IP-DO-SEU-PC:5173` (não `localhost`, senão o QR code aponta pro lugar errado).
 No celular: escaneie o QR code ou abra `/controller.html` e digite o código.
 Teste sem celular: WASD + mouse (clique esquerdo ataca, direito só mira), E entra/sai do veículo, Q/F/G habilidades, **V empurra**, 1/2/3 armas, R recarrega.
+Testar sozinho com 4 classes: abra o jogo com **`?bots=3`** no fim do endereço (3 jogadores do computador ocupam as vagas livres; tecla **B** espalha/junta, para ver a tela dividida). Só para teste.
 
 ## Controles do celular
 Stick esquerdo = mover (ou dirigir) · stick direito = mirar (ataca enquanto inclinado) · botões da classe (nome e recarga vêm do jogo) · 🚗 aparece perto de um veículo (Entrar/Sair) · Correr · Pular · **Empurrar** (pisca quando um zumbi agarra).
@@ -39,7 +40,7 @@ Sem ondas: a partida é sobrevivência sem fim (o relógio conta o tempo vivo). 
 | 3 | 🔮 Mago (85 PV, mana) | dardo mágico que persegue o alvo | Meteoro (área marcada no chão) · Nova de gelo (deixa lentos) |
 | 4 | 🪕 Bardo | onda sonora em cone que empurra | Canção de cura (cura e revive quem caiu perto) · Balada da coragem (+dano e +velocidade) |
 
-Tudo em `src/games/survivor/abilities/classes.js` (vida, recargas, dano) e `src/shared/fx/effects.js` (anéis, arcos, clarões, fumaça, notas).
+Números (vida, velocidade, recargas, dano, alcance, mana, barulho) em **`src/games/survivor/config/balance.js`**; comportamento em `src/games/survivor/abilities/classes.js`; efeitos em `src/shared/fx/effects.js` (anéis, arcos, clarões, fumaça, notas).
 
 ## Personagens e animação (estilo Project Zomboid)
 - `src/shared/characters/looks.js` – visual de cada classe, uma malha fundida por osso (quadril, tronco, cabeça, coxa, canela, pé, braço, antebraço).

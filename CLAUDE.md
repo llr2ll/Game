@@ -25,12 +25,17 @@ npm run build    # gera dist/ (para hospedar)
 Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesmo host>:8080` (`src/engine/net/host.js`, `src/engine/input/phone.js`).
 
 ## Como testar
-- `npm run check` — rápido (~7 s), sem navegador. Rodar SEMPRE antes de abrir PR. Três verificações:
+- `npm run check` — ~25 s, sem navegador. Rodar SEMPRE antes de abrir PR. Quatro verificações:
   1. **Camadas:** imports só descem (`games/<jogo>` → `shared` → `engine`); um jogo não importa outro; import para arquivo inexistente falha.
   2. **Mundo:** gera 515 chunks + nomes sem desenhar (via Vite) e compara o hash com `scripts/world-fingerprint.txt`.
      Se o mundo mudar sem querer, falha. Mudança de propósito (precisa de OK do dono): `npm run check -- --update-world`.
   3. **Caches:** gera um trecho de novo com os limites dos caches encolhidos (x0, x0,004, x0,02), esquecendo antes de cada chunk;
      tem de dar igual. Pega cache que guarda estado ou caches ligados esquecidos separados (testado: acusa o erro).
+  4. **Jogo (replay):** `scripts/sim.mjs` joga 100 s com 4 jogadores (uma classe cada) com sorteio e relógio fixos e compara o hash com
+     `scripts/sim-fingerprint.txt`. **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
+     e dizer isso na descrição. Detalhes que importam: roda em processo novo; só sorteios feitos por código de `src/` entram na sequência fixa
+     (o Vite e o Three.js também sorteiam, e isso mudaria com a ordem dos arquivos). `SIM_TRACE=arquivo node scripts/sim.mjs` grava o rastro
+     quadro a quadro para achar onde dois replays se separam.
 - `npm run smoke` — teste automático (~3 min). Compila o jogo, sobe relay **8099** e página **5199** (não briga com o dev/server do dono),
   abre no Chromium sem tela, entra 1 teclado (Atirador) + 1 celular simulado (Samurai), joga 60 s (anda, atira, habilidades, carro, noite),
   aperta Esc e confere a volta ao menu. **Falha se aparecer qualquer `console.error` ou erro de página.** Capturas e log em `smoke/` (versionados: o PR mostra as capturas).
@@ -45,7 +50,7 @@ Regra: **imports só descem** — `src/games/<jogo>` → `src/shared` → `src/e
 index.html, main.css      página do jogo (tela) + HUD → carrega src/games/survivor/main.js
 controller.html           página do celular (controle) → carrega src/engine/input/phone.js
 server/server.js          relay WebSocket: cria sala (4 letras) e só repassa mensagens tela ↔ celulares
-scripts/                  smoke.mjs (teste no navegador sem tela), check.mjs (camadas + mundo), world-fingerprint.txt
+scripts/                  smoke.mjs (teste no navegador sem tela), check.mjs (camadas, mundo, caches, replay), sim.mjs (replay), *-fingerprint.txt
 smoke/                    capturas + log do último npm run smoke
 docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-DESIGN (direção criativa)
 src/engine/               genérico
@@ -70,9 +75,11 @@ src/shared/               peças prontas
   audio/                  sfx.js (efeitos soltos), soundscape.js (som contínuo)
 src/games/survivor/       este jogo
   main.js                 liga tudo: renderer, clima, lobby, rede, teclado, loop; Wire() conecta motor ↔ mundo ↔ sons
-  rules/survival.js       REGRAS: jogadores, dano, morte/revive (25 s), suprimentos (75 s), fim de jogo, estado p/ celulares
+  config/balance.js       TODOS os números ajustáveis (classes, armas, habilidades, zumbis, regras, dia), comentados em português
+  config/weapons.js       nomes e ordem das armas (números vêm do balance.js)
+  rules/survival.js       REGRAS: jogadores, dano, morte/revive, suprimentos, fim de jogo, estado p/ celulares
   abilities/classes.js    as 4 classes e suas habilidades
-  config/weapons.js       dados das armas do Atirador
+  bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
   enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
   ui/hud.js               placar da partida
 ```
@@ -97,13 +104,19 @@ src/games/survivor/       este jogo
   Caches por tipo/variante (geometria de casas, móveis, materiais, cores) têm tamanho fixo e continuam `Map` comum.
   Cache novo do mundo, guardado por posição? Use `LimitedCache` e não guarde estado nele (o `npm run check` testa).
 
+**Números do jogo (F3):** todo número de jogabilidade fica em `src/games/survivor/config/balance.js` (o dono ajusta o jogo só ali).
+Peças de `shared` recebem os números como parâmetro, com padrão igual ao de antes: `UpdatePlayerMovement(p, dt, colliders, tune)`
+(`DEFAULT_MOVE`), `CreateClimate(scene, light, { daySeconds })`. Número novo de jogabilidade? Vai para o `balance.js` com comentário.
+Fora do balance de propósito: câmera/split screen, carros (`shared/vehicles/models.js`), animação, mundo e detalhes finos da IA
+(tempo caído, tropeço, quantos o empurrão afasta) — candidatos se o dono pedir.
+
 ## Contrato de input (proteger)
 Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - `game.setInput(id, { mx, mz, ax, az, run, fire })` — mover (-1..1), mirar (-1..1; mirar inclinado = ataca), correr 0/1, `fire` só no mouse.
 - `game.act(id, ação)` — `b1` `b2` `b3` (botões da classe) · `shove` · `use` (carro) · `jump` · `reload` · `swap` · `carbine` `shotgun` `pistol`.
 - Celular → relay: `{t:'join', code, name}`, `{t:'in', mx, mz, ax, az, run}` a cada 33 ms, `{t:'act', a}`.
 - Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
-- Jogador do teclado tem id `'local'`.
+- Jogador do teclado tem id `'local'`. Bots de teste têm id `bot1`…`bot3` e usam o mesmo contrato (`games/survivor/bots.js`).
 
 ## Decisões tomadas (não reabra sem perguntar ao dono)
 - Multiplayer local e online. Online, por enquanto = modelo Jackbox: amigos remotos assistem pela transmissão (Discord ou Steam Remote Play Together)
@@ -164,7 +177,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
   Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
 
 ## Plano da sessão de fundação (30/10/2026)
-0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR aberto) · F3.
+0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR #5) · F3 (PR aberto).
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -177,6 +190,9 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **fundacao-balanco (F3)** — `config/balance.js` com todos os números (classes, armas, habilidades, zumbis, regras, dia);
+  movimento e clima recebem os números por parâmetro; `?bots=1..3` (tecla B espalha/junta, testa split screen sozinho);
+  `npm run check` ganhou o replay (`scripts/sim.mjs`): código original e novo dão o mesmo hash. Mesmo mundo, mesmo jogo.
 - **fundacao-instancias (F2)** — `CreateChunks` (instância, `reset()`), postes dentro de `CreateStreetLights`, vagas de carro dentro de
   `CreateVehicles`; `ResetColliders`/`ResetBuildings`/`ResetSignAtlas`; 15 caches com `LimitedCache` + `TrimCaches` no descarregamento;
   `npm run check` ganhou o teste de esquecer caches. Memória em 10 min de sedã (~14 km): antes 171 → 256 MB subindo 7,5 MB/min;

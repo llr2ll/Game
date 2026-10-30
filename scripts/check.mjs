@@ -6,14 +6,19 @@
 //    Mudou sem querer = mesmo lugar, outro mundo. Se a mudança foi de propósito: npm run check -- --update-world
 //    Também gera um trecho de novo forçando os caches (engine/core/memo.js) a esquecer tudo antes de cada chunk:
 //    tem de dar igual (esquecer só pode custar tempo, nunca mudar o mundo).
+// 3. Jogo: replay de 100 s com 4 jogadores, sorteio e relógio fixos (scripts/sim.mjs), comparado com scripts/sim-fingerprint.txt.
+//    PR de organização tem de dar igual. PR que muda a jogabilidade de propósito: npm run check -- --update-sim
+//    (e dizer isso na descrição do PR).
 import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { createServer } from 'vite'
+import { execFileSync } from 'node:child_process'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const SRC = path.join(ROOT, 'src')
 const FP_FILE = path.join(ROOT, 'scripts/world-fingerprint.txt')
+const SIM_FILE = path.join(ROOT, 'scripts/sim-fingerprint.txt')
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const PACKAGES = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
 const problems = []
@@ -105,6 +110,19 @@ try {
     else console.log(`mundo: igual (${fp.slice(0, 26)}…)`)
   }
 } catch (e) { problems.push(`não consegui gerar o mundo: ${e.message}`) }
+
+// ---------------------------------------------------------------- 3. jogo (replay)
+try {
+  // processo novo: o replay precisa começar do zero (ver scripts/sim.mjs)
+  const out = execFileSync(process.execPath, [path.join(ROOT, 'scripts/sim.mjs'), '--json'], { cwd: ROOT, encoding: 'utf8' })
+  const sim = JSON.parse(out.trim().split('\n').pop())
+  if (process.argv.includes('--update-sim')) { fs.writeFileSync(SIM_FILE, sim.hash + '\n'); console.log(`jogo: replay atualizado (${sim.summary})`) }
+  else {
+    const saved = fs.existsSync(SIM_FILE) ? fs.readFileSync(SIM_FILE, 'utf8').trim() : ''
+    if (sim.hash !== saved) problems.push(`a jogabilidade mudou no replay (${sim.summary}). Se foi de propósito: npm run check -- --update-sim`)
+    else console.log(`jogo: replay igual (${sim.summary})`)
+  }
+} catch (e) { problems.push(`não consegui rodar o replay: ${e.message}`) }
 
 if (problems.length) {
   console.log(`\n✗ FALHOU: ${problems.length} problema(s)`)

@@ -12,9 +12,14 @@ import { CreateGore } from '../../../shared/fx/gore'
 import { CreateVehicles } from '../../../shared/vehicles/vehicles'
 import { sfx } from '../../../shared/audio/sfx'
 import { ApplyInput } from '../../../engine/input/contract'
+import { BALANCE } from '../config/balance'
 
 const MAX_PLAYERS = 4
-const REVIVE_T = 25, SUPPLY_T = 75
+// números das regras: config/balance.js
+const RU = BALANCE.rules, PL = BALANCE.player
+const REVIVE_T = RU.revive.time, SUPPLY_T = RU.supply.every
+// movimento (shared) com os números deste jogo; a balada do Bardo também acelera
+const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
 
 // hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?) }
 export function CreateGame(scene, colliders, net, hooks = {}) {
@@ -78,13 +83,13 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     if (a === 'b1' || a === 'b2' || a === 'b3') return abilities.skill(p, +a[1] - 1)
     if (a === 'swap') return abilities.skill(p, 0) // controles antigos
     if (a === 'reload') return p.cls.id === 'gunner' && abilities.skill(p, 1)
-    if (a === 'jump') { if (!p.vehicle && !p.held && p.jy <= 0.02) { p.vy = p.swim ? 7.5 : 9; sfx(p.swim ? 'swim' : 'jump', { x: p.x, z: p.z, cls: p.cls.id }) } return } // da água dá para pular para o píer/margem
+    if (a === 'jump') { if (!p.vehicle && !p.held && p.jy <= 0.02) { p.vy = p.swim ? PL.jumpWater : PL.jump; sfx(p.swim ? 'swim' : 'jump', { x: p.x, z: p.z, cls: p.cls.id }) } return } // da água dá para pular para o píer/margem
     if (WEAPONS[a] && p.weapon) abilities.setWeapon(p, a)
   }
 
   function hurt(p, dmg) {
     if (p.dead || p.invulnT > 0) return
-    if (p.vehicle) { vehicles.damage(p.vehicle, dmg * 0.9); dmg *= 0.35 } // a lataria protege
+    if (p.vehicle) { vehicles.damage(p.vehicle, dmg * RU.vehicle.carDamage); dmg *= RU.vehicle.playerDamage } // a lataria protege
     p.hp -= dmg
     p.model.hurt()
     if (p.hp > 0 && !(p.hurtT > performance.now())) { p.hurtT = performance.now() + 350; sfx('hurt', { x: p.x, z: p.z, cls: p.cls.id }) }
@@ -107,7 +112,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
       const a = (n / 8) * Math.PI * 2, tx = best.x + Math.sin(a) * 1.4, tz = best.z + Math.cos(a) * 1.4
       if (!Blocked(tx, tz, 0.5, best.lv || 0)) { x = tx; z = tz; break }
     }
-    Object.assign(p, { dead: false, hp: p.max * 0.5, x, z, vx: 0, vz: 0, jy: 0, vy: 0, lv: best.lv || 0, gy: best.gy, stamina: 100, tired: false, invulnT: 2 })
+    Object.assign(p, { dead: false, hp: p.max * RU.revive.hp, x, z, vx: 0, vz: 0, jy: 0, vy: 0, lv: best.lv || 0, gy: best.gy, stamina: 100, tired: false, invulnT: RU.revive.invulnerable })
     p.model.hurt()
     fx.ring(x, best.gy || 0, z, 0x7aff9a, 0.2, 1.6, 0.7)
     say(`${p.name} voltou!`, 1.8)
@@ -146,10 +151,10 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     for (const p of players.values()) {
       if (now - p.lastIn > 1500 && p.id !== 'local') p.input.mx = p.input.mz = p.input.ax = p.input.az = 0
       if (p.hurtCar) { hurt(p, p.hurtCar); p.hurtCar = 0 }
-      if (!p.dead && !p.vehicle) UpdatePlayerMovement(p, dt, colliders)
+      if (!p.dead && !p.vehicle) UpdatePlayerMovement(p, dt, colliders, MOVE)
       else if (p.dead) { p.gy = GroundAt(p.x, p.z); p.jy = 0; p.y = p.gy; p.model.root.position.set(p.x, p.y, p.z); p.speed = 0; p.vx = p.vz = 0; p.aiming = p.firing = false }
       abilities.tick(p, dt)
-      if (p.drown && !p.dead) { p.hp -= 8 * dt; if (p.hp <= 0) die(p) } // sem fôlego na água funda
+      if (p.drown && !p.dead) { p.hp -= PL.drown * dt; if (p.hp <= 0) die(p) } // sem fôlego na água funda
     }
 
     // sobrevivência sem fim: o tempo conta, suprimentos de vez em quando, quem cai volta ao lado de um aliado
@@ -160,10 +165,10 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
       for (const p of players.values()) if (p.dead && list.length && (p.reviveT -= dt) <= 0) revive(p, list)
       if ((st.supplyT -= dt) <= 0) {
         st.supplyT = SUPPLY_T
-        for (const p of players.values()) for (const [w, add, cap] of [['carbine', 30, 180], ['shotgun', 8, 48]]) p.ammo[w].reserve = Math.min(p.ammo[w].reserve + add, cap)
+        for (const p of players.values()) for (const w of ['carbine', 'shotgun']) { const [add, cap] = RU.supply[w]; p.ammo[w].reserve = Math.min(p.ammo[w].reserve + add, cap) }
         if ([...players.values()].some((p) => p.cls.id === 'gunner')) { say('📦 Suprimentos: +munição'); sfx('supply') }
       }
-      if (!alive().length) { st.over = true; st.overT = 6; say(`FIM DE JOGO · sobreviveram ${clock(st.time)}`, 6); sfx('gameover') }
+      if (!alive().length) { st.over = true; st.overT = RU.gameOverDelay; say(`FIM DE JOGO · sobreviveram ${clock(st.time)}`, RU.gameOverDelay); sfx('gameover') }
     } else if (st.over && (st.overT -= dt) <= 0) { if (hooks.onEnd) hooks.onEnd(); else restart() }
 
     // zumbis e veículos

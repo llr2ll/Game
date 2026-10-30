@@ -27,6 +27,10 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 
 Para testar outra classe pelo teclado: Esc → no menu, clique ✕ na sua vaga → escolha "Mouse e teclado" em outra vaga.
 
+**Sem amigos por perto?** Abra o jogo com `?bots=3` no fim do endereço (ex.: `.../?bots=3`). Três jogadores do computador entram
+nas vagas livres, cada um com sua classe, e seguem você. Aperte **B** para eles se espalharem (a tela divide) e **B** de novo para voltarem
+(a tela junta). Serve para os itens 4–7, 10 e 11 e para anotar o FPS com 4 jogadores.
+
 ## Anotar o FPS
 O FPS aparece em verde no canto de cima, à direita. Anote depois de 1 minuto de jogo, de dia, na largada.
 

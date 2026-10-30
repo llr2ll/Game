@@ -10,7 +10,7 @@ import { events } from '../../engine/core/events'
 //  Teclas: N = avança 1 hora · K = próximo tempo (Shift+K = troca na hora, sem transição)
 // =====================================================================================
 
-const DAY_SECONDS = 600 // um dia inteiro dura 10 minutos
+const DAY_SECONDS = 600 // um dia inteiro dura 10 minutos (padrão; o jogo pode passar daySeconds)
 const TRANSITION = 25 // segundos para mudar de um tempo para outro
 
 // ---------- sombras de nuvem + chão molhado: injetados em TODOS os MeshLambertMaterial ----------
@@ -233,7 +233,7 @@ function CreateWisps(scene, max = 10) {
 }
 
 // ---------- o clima ----------
-export function CreateClimate(scene, light) {
+export function CreateClimate(scene, light, { daySeconds = DAY_SECONDS } = {}) {
   const rain = CreateRain(scene)
   const wisps = CreateWisps(scene)
   const st = { t: 0.3, kind: 'clear', next: 120, bolt: 0, boltT: 6, flash: 0, wet: 0, windA: Math.PI, windT: 0, ws: 1 }
@@ -297,7 +297,7 @@ export function CreateClimate(scene, light) {
 
     // focus = pontos onde aparecem os rabiscos de vento (jogadores ou centro do menu)
     update(dt, focus) {
-      st.t = (st.t + dt / DAY_SECONDS) % 1
+      st.t = (st.t + dt / daySeconds) % 1
       if ((st.next -= dt) <= 0) setWeather(pickWeather(st.kind))
       const goal = WEATHER[st.kind], kk = 1 - Math.exp(-dt * 3 / TRANSITION)
       for (const p of PARAMS) cur[p] += (goal[p] - cur[p]) * kk
