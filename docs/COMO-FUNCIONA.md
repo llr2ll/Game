@@ -34,26 +34,39 @@ Por que assim: ninguém precisa instalar nada nem ter controle. E, como o jogo s
 
 ## O que cada pasta faz
 
+O código está dividido em **3 andares**, como um prédio. Quem está em cima pode usar o que está embaixo, nunca o contrário.
+O comando `npm run check` confere essa regra sozinho.
+
+| Andar | Pasta | O que tem | Por que separar |
+|---|---|---|---|
+| 🏗️ Térreo: o motor | `src/engine/` | O que qualquer jogo precisa: desenhar a tela, dividir a tela, ler teclado e celular, falar com o servidor, tocar som, carregar o mapa em pedaços, colisão | Não sabe que existem zumbis. Os 3 jogos (este, o souls-like e o RPG) usam igual |
+| 🧱 1º andar: peças prontas | `src/shared/` | Personagens e animações, o modelo do zumbi, o mundo (estradas, vilas, casas, placas, clima, água), carros, efeitos, a biblioteca de sons | Cada jogo escolhe as peças que quer usar |
+| 🎮 2º andar: este jogo | `src/games/survivor/` | As regras do survivor: classes e habilidades, armas, a horda de zumbis, morte e revive, placar | As regras de um jogo não vazam para os outros |
+
+Quando uma peça de baixo precisa que algo aconteça em cima, ela **avisa** em vez de chamar direto.
+Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador do mapa avisa "aqui cabe um carro" e o jogo decide se cria o carro.
+
 | Pasta / arquivo | O que faz | Exemplo do que você vê |
 |---|---|---|
 | `index.html`, `main.css` | A página do jogo e o visual do placar (HUD) | Relógio, pontos e vida no canto |
 | `controller.html` | A página do controle no celular | Os dois sticks e os botões |
 | `server/` | O servidor que passa recados entre tela e celulares | O código de 4 letras |
-| `src/index.js` | Liga tudo e desenha a tela várias vezes por segundo | — |
-| `src/game.js` | **As regras**: dano, morte, voltar em 25 s, suprimentos, fim de jogo | "FIM DE JOGO · sobreviveram 03:12" |
-| `src/ui/` | O menu de 4 vagas e o placar | O menu inicial |
-| `src/input/` | Teclado e mouse | WASD, clique, Q/F/G |
-| `src/net/` | A conexão da tela com o servidor | "Servidor conectado" no menu |
-| `src/controller/` | O código que roda no celular | Vibrar quando leva mordida |
-| `src/camera/` | Câmera e tela dividida | A tela que divide quando o grupo se separa |
-| `src/characters/` | As 4 classes, as habilidades, o corpo e as animações | Samurai dando a investida |
-| `src/weapons/` | As armas do Atirador | Carabina, espingarda, pistola |
-| `src/enemies/` | Os zumbis: o que veem, o que ouvem, como andam e atacam | Zumbi vindo atrás do barulho do tiro |
-| `src/vehicles/` | Os carros: como andam, bancos, batidas | Dirigir a picape |
-| `src/fx/` | Efeitos visuais e sangue | Explosão da granada, braço voando |
-| `src/audio/` | Todo o som, criado na hora (não há arquivos de som) | Chuva, motor, gemido |
-| `src/world/` | O mundo infinito: estradas, vilas, cidades, casas, placas, água, clima | Placa com nome de vila galega |
-| `scripts/smoke.mjs` | Teste automático: abre o jogo sozinho e procura erros | — |
+| `src/engine/render/` | Desenhar, dividir a tela, luz, cores | A tela que divide quando o grupo se separa |
+| `src/engine/input/` | Teclado, mouse e o código que roda no celular | WASD; vibrar quando leva mordida |
+| `src/engine/net/` | A conexão da tela com o servidor | "Servidor conectado" no menu |
+| `src/engine/world/` | Carregar o mapa em pedaços, colisão, caminho dos inimigos | Zumbi contornando um muro |
+| `src/engine/ui/` | O menu de 4 vagas | O menu inicial |
+| `src/shared/characters/` | O corpo e as animações dos personagens | O jeito de andar mirando |
+| `src/shared/creatures/` | O modelo do zumbi | Zumbi mancando, perdendo o braço |
+| `src/shared/worldgen/` | O mundo: estradas, vilas, cidades, casas, placas, água, clima | Placa com nome de vila galega |
+| `src/shared/vehicles/` | Os carros: como andam, bancos, batidas | Dirigir a picape |
+| `src/shared/fx/` | Efeitos visuais, sangue, respingos | Explosão da granada |
+| `src/shared/audio/` | Todos os sons, criados na hora | Chuva, motor, gemido |
+| `src/games/survivor/main.js` | Liga todas as peças deste jogo | — |
+| `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, suprimentos, fim de jogo | "FIM DE JOGO · sobreviveram 03:12" |
+| `src/games/survivor/abilities/` | As 4 classes e as habilidades | Samurai dando a investida |
+| `src/games/survivor/enemies/` | O que os zumbis veem, ouvem e fazem | Zumbi vindo atrás do barulho do tiro |
+| `scripts/` | Testes automáticos: `smoke` (abre o jogo e procura erros) e `check` (andares + mapa igual) | — |
 | `smoke/` | Fotos e anotações do último teste automático | As capturas no PR |
 | `docs/` | Documentos para você | Este arquivo |
 
@@ -70,4 +83,6 @@ Isso deixa o jogo leve para baixar, mas toda mudança visual passa por código.
 
 ## Como testar
 - Depois de cada PR: siga `docs/TESTE-MANUAL.md` (5 minutos).
-- A IA roda `npm run smoke` antes de abrir cada PR e põe as capturas na descrição.
+- A IA roda `npm run check` e `npm run smoke` antes de abrir cada PR e põe as capturas na descrição.
+- O `npm run check` também tira uma "impressão digital" do mapa. Se alguma mudança alterar o mundo sem querer
+  (uma casa em outro lugar, outro nome de vila), ele avisa.

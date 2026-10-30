@@ -1,0 +1,93 @@
+// npm run check — duas verificações rápidas (~3 s), sem navegador:
+// 1. Camadas: os imports só descem. games/<jogo> → shared → engine.
+//    engine não importa shared nem games; shared não importa games; um jogo não importa outro jogo.
+//    Também falha se um import aponta para arquivo que não existe.
+// 2. Mundo: gera ~500 pedaços do mapa sem desenhar e compara a "impressão digital" com scripts/world-fingerprint.txt.
+//    Mudou sem querer = mesmo lugar, outro mundo. Se a mudança foi de propósito: npm run check -- --update-world
+import fs from 'node:fs'
+import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { createServer } from 'vite'
+
+const ROOT = path.resolve(import.meta.dirname, '..')
+const SRC = path.join(ROOT, 'src')
+const FP_FILE = path.join(ROOT, 'scripts/world-fingerprint.txt')
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+const PACKAGES = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
+const problems = []
+
+// ---------------------------------------------------------------- 1. camadas
+const files = []
+const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') && files.push(path.join(d, e.name)) }
+walk(SRC)
+
+// camada de um arquivo: 'engine' | 'shared' | 'games/<nome>' | null (fora das camadas)
+function layerOf(file) {
+  const [a, b] = path.relative(SRC, file).split(path.sep)
+  if (a === 'engine' || a === 'shared') return a
+  if (a === 'games' && b && !b.endsWith('.js')) return `games/${b}`
+  return null
+}
+const allowed = (from, to) => from === to || to === 'engine' || (to === 'shared' && from !== 'engine')
+const resolveImport = (file, spec) => {
+  const base = path.resolve(path.dirname(file), spec)
+  return [base, base + '.js', path.join(base, 'index.js')].find((c) => fs.existsSync(c) && fs.statSync(c).isFile())
+}
+const IMPORT = /(?:^|\n)\s*(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]|(?:^|\n)\s*import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
+
+for (const file of files) {
+  const rel = path.relative(ROOT, file)
+  const from = layerOf(file)
+  if (!from) { problems.push(`${rel}: arquivo fora de src/engine, src/shared ou src/games/<jogo>`); continue }
+  const code = fs.readFileSync(file, 'utf8')
+  for (const m of code.matchAll(IMPORT)) {
+    const spec = m[1] || m[2] || m[3]
+    if (!spec.startsWith('.')) {
+      if (!PACKAGES.some((p) => spec === p || spec.startsWith(p + '/'))) problems.push(`${rel}: importa o pacote "${spec}", que não está no package.json`)
+      continue
+    }
+    const target = resolveImport(file, spec)
+    if (!target) { problems.push(`${rel}: importa "${spec}", que não existe`); continue }
+    const to = layerOf(target)
+    if (!allowed(from, to)) problems.push(`${rel}: ${from} não pode importar ${to} ("${spec}")`)
+  }
+}
+// as páginas apontam para scripts que existem?
+for (const html of ['index.html', 'controller.html']) {
+  const code = fs.readFileSync(path.join(ROOT, html), 'utf8')
+  for (const m of code.matchAll(/(?:src="|from ')\.?(\/src\/[^"']+)["']/g)) if (!fs.existsSync(path.join(ROOT, m[1]))) problems.push(`${html}: aponta para ${m[1]}, que não existe`)
+}
+console.log(`camadas: ${files.length} arquivos verificados`)
+
+// ---------------------------------------------------------------- 2. mundo
+// só os geradores puros (descritores de casas, estradas, placas, nomes); nada é desenhado
+async function worldFingerprint() {
+  const vite = await createServer({ root: ROOT, logLevel: 'error', server: { middlewareMode: true, hmr: false }, appType: 'custom', optimizeDeps: { noDiscovery: true } })
+  try {
+    const { Seed } = await vite.ssrLoadModule('/src/shared/worldgen/map.js')
+    const { NodeName, Destination } = await vite.ssrLoadModule('/src/shared/worldgen/names.js')
+    const { NodeType } = await vite.ssrLoadModule('/src/shared/worldgen/layout.js')
+    const h = createHash('sha256')
+    // largada, um trecho longe ao norte e outro a leste
+    const areas = [[-10, 10, -10, 10], [-3, 3, 290, 296], [38, 42, -52, -48]]
+    let n = 0
+    for (const [x0, x1, z0, z1] of areas) for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) { h.update(JSON.stringify(Seed(cx, cz))); n++ }
+    for (let i = -8; i <= 8; i++) for (let j = -8; j <= 8; j++) h.update(JSON.stringify([NodeType(i, j), NodeName(i, j), [0, 1, 2, 3].map((k) => Destination(i, j, k))]))
+    return `${n} chunks · ${h.digest('hex')}`
+  } finally { await vite.close() }
+}
+try {
+  const fp = await worldFingerprint()
+  if (process.argv.includes('--update-world')) { fs.writeFileSync(FP_FILE, fp + '\n'); console.log(`mundo: impressão digital atualizada (${fp})`) }
+  else {
+    const saved = fs.existsSync(FP_FILE) ? fs.readFileSync(FP_FILE, 'utf8').trim() : ''
+    if (fp !== saved) problems.push(`o mundo mudou: ${fp} (esperado ${saved || 'nada salvo'}). Se foi de propósito: npm run check -- --update-world`)
+    else console.log(`mundo: igual (${fp.slice(0, 26)}…)`)
+  }
+} catch (e) { problems.push(`não consegui gerar o mundo: ${e.message}`) }
+
+if (problems.length) {
+  console.log(`\n✗ FALHOU: ${problems.length} problema(s)`)
+  for (const p of problems) console.log(`  - ${p}`)
+  process.exitCode = 1
+} else console.log('\n✓ PASSOU')

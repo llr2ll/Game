@@ -4,6 +4,7 @@
     "dev": "vite --host",
     "server": "node server/server.js",
     "build": "vite build",
+    "check": "node scripts/check.mjs",
     "smoke": "playwright install --only-shell chromium && node scripts/smoke.mjs"
   },
   "dependencies": {

@@ -1,13 +1,12 @@
 [0s] 1/4 compilando o jogo…
 [1s] 2/4 subindo relay e página…
 [2s] 3/4 abrindo o jogo no navegador sem tela…
-[jogo warning] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
-[6s]    sala PMEU aberta no relay
-[42s] 4/4 jogando 60 s…
-[70s]    captura 02-inicio.jpg
-[116s]    captura 03-acao.jpg
-[137s]    captura 04-noite.jpg
-[152s]    captura 05-fim.jpg
-[165s]    HUD: {"topo":"⏱ 00:05 · 🧟 24\nPontos 0\n🌙 19:20 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 4s\n⚔️ Celular · Katana · 0 abates"}
+[8s]    sala UJXS aberta no relay
+[46s] 4/4 jogando 60 s…
+[73s]    captura 02-inicio.jpg
+[122s]    captura 03-acao.jpg
+[143s]    captura 04-noite.jpg
+[159s]    captura 05-fim.jpg
+[172s]    HUD: {"topo":"⏱ 00:05 · 🧟 25\nPontos 0\n🌙 19:20 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 3s\n⚔️ Celular · Katana · 0 abates"}
 
 PASSOU

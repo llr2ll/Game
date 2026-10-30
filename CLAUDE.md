@@ -22,9 +22,13 @@ npm run server   # terminal 1: relay WebSocket (porta 8080; muda com PORT=...)
 npm run dev      # terminal 2: jogo (porta 5173)
 npm run build    # gera dist/ (para hospedar)
 ```
-Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesmo host>:8080` (`src/net/host.js`, `src/controller/controller.js`).
+Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesmo host>:8080` (`src/engine/net/host.js`, `src/engine/input/phone.js`).
 
 ## Como testar
+- `npm run check` — rápido (~3 s), sem navegador. Rodar SEMPRE antes de abrir PR. Duas verificações:
+  1. **Camadas:** imports só descem (`games/<jogo>` → `shared` → `engine`); um jogo não importa outro; import para arquivo inexistente falha.
+  2. **Mundo:** gera 515 chunks + nomes sem desenhar (via Vite) e compara o hash com `scripts/world-fingerprint.txt`.
+     Se o mundo mudar sem querer, falha. Mudança de propósito (precisa de OK do dono): `npm run check -- --update-world`.
 - `npm run smoke` — teste automático (~3 min). Compila o jogo, sobe relay **8099** e página **5199** (não briga com o dev/server do dono),
   abre no Chromium sem tela, entra 1 teclado (Atirador) + 1 celular simulado (Samurai), joga 60 s (anda, atira, habilidades, carro, noite),
   aperta Esc e confere a volta ao menu. **Falha se aparecer qualquer `console.error` ou erro de página.** Capturas e log em `smoke/` (versionados: o PR mostra as capturas).
@@ -33,37 +37,49 @@ Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesm
 - FPS real só vale na máquina do dono. Nunca tire conclusão de desempenho pelo smoke.
 
 ## Mapa de pastas (hoje)
+Regra: **imports só descem** — `src/games/<jogo>` → `src/shared` → `src/engine` (verificado por `npm run check`).
+`engine` não sabe que existem zumbis nem classes. `shared` = peças prontas que os 3 jogos podem usar. `games/survivor` = regras deste jogo.
 ```
-index.html, main.css      página do jogo (tela) + HUD
-controller.html           página do celular (controle)
+index.html, main.css      página do jogo (tela) + HUD → carrega src/games/survivor/main.js
+controller.html           página do celular (controle) → carrega src/engine/input/phone.js
 server/server.js          relay WebSocket: cria sala (4 letras) e só repassa mensagens tela ↔ celulares
-scripts/smoke.mjs         teste automático no navegador sem tela
+scripts/                  smoke.mjs (teste no navegador sem tela), check.mjs (camadas + mundo), world-fingerprint.txt
 smoke/                    capturas + log do último npm run smoke
-docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-DESIGN (proposta de direção criativa)
-src/
-  index.js                liga tudo: renderer, clima, lobby, rede, teclado, loop de desenho
-  game.js                 REGRAS: jogadores, dano, morte/revive (25 s), suprimentos (75 s), fim de jogo, estado p/ celulares
-  input/keyboard.js       teclado+mouse → mesmo contrato do celular (jogador 'local')
+docs/                     COMO-FUNCIONA (leigo), TESTE-MANUAL (checklist), GAME-DESIGN (direção criativa)
+src/engine/               genérico
+  core/                   events.js (avisos entre partes), loop.js (laço de desenho com THREE.Timer, dt ≤ 0,05)
+  render/                 splitscreen.js (junta <13 m, separa >19 m), light.js, style.js (paleta, materiais, vento),
+                          entity-shadows.js (sombras falsas), follow.js (contador de FPS)
+  input/                  contract.js (contrato de input), keyboard.js (teclado+mouse), phone.js (código do celular)
   net/host.js             conexão da tela com o relay
-  controller/controller.js  código do celular (sticks, botões, vibração)
-  ui/lobby.js, hud.js     menu de 4 vagas (a vaga define a classe) e HUD
-  camera/                 splitscreen.js (junta <13 m, separa >19 m), follow.js (FPS), light.js
-  characters/             classes.js (classes + habilidades), player.js (esqueleto/animação), looks.js (visual),
-                          kits.js (armas + IK), player-movement.js (movimento com peso)
-  weapons/weapons.js      dados das armas do Atirador
-  enemies/                zombies.js (IA: visão, audição, agarrão, renascer), zombie-model.js, pathing.js (desvio/A*/portas/escadas)
-  vehicles/               models.js (sedã, picape, jipe: desempenho, bancos), vehicles.js (física, entrar/sair, atropelar)
-  fx/                     effects.js (anéis, arcos, fumaça), gore.js (sangue, desmembramento, com pools)
-  audio/                  engine.js (Web Audio, primitivas), sfx.js (efeitos soltos), soundscape.js (som contínuo)
-  world/                  mundo infinito por chunks:
-    chunks/manager.js, generator.js   carrega/descarrega chunks em volta dos jogadores
-    layout.js, town.js, city-lots.js  rede de estradas, vilas, cidades, lotes
-    buildings.js, buildings-registry.js  casas com andares/escadas/portas/móveis; recorte de telhado; portas
-    climate.js            dia de 10 min, chuva, tempestade, neblina, vento (N = +1 h, K = muda o tempo)
-    collision.js, sidewalk.js  colisão e altura do chão
-    signs.js, signage.js, sign-atlas.js, names.js  placas, marcos de km, nomes galegos
-    water*.js, roadwear.js, props.js, poles.js, streetlights.js, assets*.js, style.js, terrain.js, noise.js …
+  audio/engine.js         Web Audio: barramentos, primitivas, som posicional
+  world/                  noise.js (hash/ruído), collision.js (grade de colisão), chunks.js (carrega/descarrega chunks),
+                          pathing.js (desvio, A*, rota dentro de casas)
+  ui/lobby.js             menu de 4 vagas (celular ou teclado); textos e sons vêm do jogo
+src/shared/               peças prontas
+  characters/             player.js (esqueleto/animação), looks.js (visual), kits.js (armas + IK), player-movement.js
+  creatures/zombie-model.js  humanoide articulado (12 variações), base dos zumbis
+  worldgen/               mundo: layout.js (estradas), town.js, city-lots.js, buildings.js, buildings-registry.js (portas, andares),
+                          generator.js (monta um chunk), map.js (descritor do chunk), climate.js, signs*.js, names.js, water*.js,
+                          sidewalk.js (altura do chão), terrain.js, roadwear.js, props.js, poles.js, streetlights.js, assets*.js …
+  vehicles/               models.js (sedã, picape, jipe), vehicles.js (física, entrar/sair, atropelar)
+  fx/                     effects.js, gore.js, water-fx.js (ondas e respingos)
+  audio/                  sfx.js (efeitos soltos), soundscape.js (som contínuo)
+src/games/survivor/       este jogo
+  main.js                 liga tudo: renderer, clima, lobby, rede, teclado, loop; Wire() conecta motor ↔ mundo ↔ sons
+  rules/survival.js       REGRAS: jogadores, dano, morte/revive (25 s), suprimentos (75 s), fim de jogo, estado p/ celulares
+  abilities/classes.js    as 4 classes e suas habilidades
+  config/weapons.js       dados das armas do Atirador
+  enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
+  ui/hud.js               placar da partida
 ```
+
+**Como as camadas conversam sem import subindo** (tudo ligado em `Wire()` de `games/survivor/main.js`):
+- Avisos (`engine/core/events.js`): o mundo emite `door-open`, `door-close`, `thunder`, `splash`, `vehicle-spot`; o jogo decide o som/carro.
+- Funções passadas ao motor: `SetupChunks({ size, generate, onLoad, onUnload })`, `SetDeepTest` (água funda), `SetIndoorRoute`
+  (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `labels`, `sound`, `subtitle`. Teclado recebe as teclas extras.
+- Ainda são variáveis de módulo (estado global). A fundação F2 troca por instâncias criadas no `main.js`, com `reset()`.
+- `shared` pode importar `shared` (ex.: `creatures/zombie-model` usa `SoleDepth` de `characters/player`; `fx/gore` usa `worldgen`).
 
 ## Contrato de input (proteger)
 Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
@@ -112,14 +128,11 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
 ## Fatos que não são óbvios no código
 - **Não existe seed.** O mundo é uma função fixa das coordenadas (`hash` em `src/world/noise.js`): toda partida acontece no mesmo mapa.
   Zumbis, clima e efeitos usam `Math.random` (não são determinísticos). "Mesmo mundo" = mesmas casas/estradas/nomes nas mesmas coordenadas.
-- Dependências que atravessam camadas (resolver na fundação): `world/buildings-registry.js`, `world/climate.js` e `world/water-fx.js` importam `audio/sfx`;
-  `world/chunks/generator.js` importa `vehicles/vehicles` (`RegisterVehicleSpawn`); `enemies/zombie-model.js` importa `SoleDepth` de `characters/player`;
-  `ui/hud.js` importa `clock` de `game.js`; `ui/lobby.js` importa `audio/sfx`.
-- Estado global em módulos: chunks (`chunks/manager.js`), grade de colisão (`collision.js`), registro de prédios (`buildings-registry.js`),
-  postes (`streetlights.js`), atlas de placas (`sign-atlas.js`).
-- ~20 caches `Map` do mundo nunca são limpos (`seed/map.js`, `town.js`, `city-lots.js`, `buildings.js`, `props.js`, `poles.js`, `signs.js`, `names.js`,
-  `layout.js`, `endings.js`, `water.js`, `water-life.js`, `sidewalk.js`, `roadwear.js`…). Medir a memória antes de mexer.
-- `THREE.Clock` está obsoleto (`src/index.js`) e gera o único aviso do console → trocar por `THREE.Timer` na fundação.
+- Estado global em módulos (F2 resolve): chunks (`engine/world/chunks.js`), grade de colisão (`engine/world/collision.js`),
+  registro de prédios (`shared/worldgen/buildings-registry.js`), postes (`shared/worldgen/streetlights.js`), atlas de placas (`shared/worldgen/sign-atlas.js`),
+  vagas de carro (`shared/vehicles/vehicles.js`), canal de avisos (`engine/core/events.js`) e os ganchos `Set…` do motor.
+- ~20 caches `Map` do mundo nunca são limpos (`worldgen/map.js`, `town.js`, `city-lots.js`, `buildings.js`, `props.js`, `poles.js`, `signs.js`, `names.js`,
+  `layout.js`, `endings.js`, `water.js`, `water-life.js`, `sidewalk.js`, `roadwear.js`…). Medir a memória antes de mexer (F2).
 - `npm audit` acusa falhas em dependências do Vite (nanoid, postcss, source-map-js). Já existiam; não corrigidas (perguntar ao dono antes).
 - Depois do merge do PR "limpeza", `git pull` apaga a pasta `node_modules` (ela saiu do Git) → rodar `npm install` de novo.
 - **Escala das placas:** 1 km de placa = 32 m de jogo (marcos de km a cada 32 m; cada trecho de 64 m entre cruzamentos = "2 km").
@@ -133,7 +146,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera. Não mi
   Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
 
 ## Plano da sessão de fundação (30/10/2026)
-0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs (F1, F2, F3).
+0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR aberto) · F2 · F3.
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -146,5 +159,8 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **fundacao-pastas (F1)** — código em `src/engine`, `src/shared`, `src/games/survivor`; `npm run check` (camadas + impressão digital do mundo);
+  ligações que subiam viraram avisos (`events`) ou funções passadas pelo jogo (`Wire()`); `THREE.Clock` → `THREE.Timer`
+  (`engine/core/loop.js`); contrato de input em `engine/input/contract.js`. Mesmo mundo (hash igual ao de antes), mesmo jogo.
 - **game-design** — `docs/GAME-DESIGN.md`: diagnóstico, 3 conceitos (escolhido: B, A paróquia sitiada), partida de ~27 min,
   saque, 24 melhorias, inimigos, progressão, juice, plano do vertical slice e comercial. Só documento.
