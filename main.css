@@ -11,6 +11,7 @@ html, body { height: 100%; margin: 0; background: #1b1512; overflow: hidden; fon
 @keyframes blink { to { opacity: .45 } }
 .pl.dead { opacity: .5 }
 .pl .bar.mana { height: 4px } .pl .bar.mana i { background: #ffc94a }
+.pl .bar.xp { height: 3px; margin-top: 3px } .pl .bar.xp i { background: #b48cff } /* XP até o próximo nível */
 .pl .cds { display: flex; gap: 6px; margin-top: 4px; font-size: 11px; opacity: .8 } .pl .cd { background: #fff2; padding: 1px 6px; border-radius: 4px }
 #room { position: absolute; right: 12px; top: 40px; background: #000a; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px }
 #room canvas { display: block; margin: 0 auto 6px; border-radius: 6px; background: #fff }
@@ -36,6 +37,7 @@ body.in-lobby #hud { display: none }
 .slot button:hover:not(:disabled), #start:hover:not(:disabled) { background: #fff4 }
 .slot button:disabled { opacity: .35; cursor: not-allowed }
 .slot .x { position: absolute; top: 6px; right: 6px; padding: 2px 8px; background: #0006 }
+.slot .pk { padding: 0 7px; margin: 0 4px; font-size: 12px }
 .slot input { font: inherit; font-weight: 700; font-size: 18px; background: #0006; color: #fff; border: 1px solid #fff3; border-radius: 6px; padding: 6px 8px; width: calc(100% - 34px) }
 .slot .st { font-size: 14px; opacity: .85 } .slot .st.wait { color: #ffcf9a }
 #start { font-size: 20px; padding: 14px; background: #c85b72 } #start:disabled { background: #fff2; opacity: .6; cursor: not-allowed }
