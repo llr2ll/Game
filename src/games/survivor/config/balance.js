@@ -107,10 +107,26 @@ export const BALANCE = {
 
   // ---------------------------------------------------------------- regras da partida
   rules: {
-    revive: { time: 25, hp: 0.5, invulnerable: 2 }, // quem cai volta em 25 s · com metade da vida · 2 s invulnerável
+    // quem cai (J6) fica no chão; um aliado ao lado levanta (Usar, parado) ou, durante o levantar, Usar de novo gasta 1 🩹 e levanta na hora
+    fall: {
+      bleed: 40, // segundos no chão esperando ajuda; depois fica fora até o próximo amanhecer
+      lift: 3, // segundos parado ao lado (Usar) para levantar alguém sem remédio
+      reach: 1.6, // distância para conseguir levantar alguém
+      noise: 3, // barulho de quem está levantando (a cada segundo)
+      hp: 0.5, // vida ao levantar (fração da vida máxima; vale também para quem volta no amanhecer)
+      invulnerable: 2, // segundos invulnerável depois de levantar
+    },
     ammoCap: { carbine: 180, shotgun: 48 }, // munição máxima na reserva do Atirador (munição só vem do saque)
     resultTime: 12, // segundos mostrando o resultado (vitória/derrota) antes de voltar ao menu
     vehicle: { carDamage: 0.9, playerDamage: 0.35 }, // dentro do carro: o carro leva 90% do dano e o jogador só 35%
+  },
+
+  // ---------------------------------------------------------------- jogando sozinho (J6)
+  solo: {
+    medkit: 1, // remédios no estoque no começo da partida
+    selfLift: 1, // quantas vezes o jogador caído levanta sozinho (Usar, mesmo tempo do levantar) até cada amanhecer
+    loot: 1.2, // chance de achar algo ao revistar ×1,2 (+20%)
+    bash: 0.75, // barricadas perdem vida 25% mais devagar (uma pessoa não segura todas as entradas)
   },
 
   // ---------------------------------------------------------------- saque nas casas

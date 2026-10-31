@@ -282,7 +282,7 @@ export function CreateAbilities(ctx) {
     later(0.35, () => {
       if (p.dead) return
       for (const o of allies(p, B.song.radius)) {
-        if (o.dead) { if (Math.hypot(o.x - p.x, o.z - p.z) < B.song.reviveRadius) { o.dead = false; o.hp = o.max * B.song.reviveHp; o.model.hurt(); sfx('revive', { x: o.x, z: o.z }) } else continue } // reviver quem caiu perto
+        if (o.dead) { if (!o.out && Math.hypot(o.x - p.x, o.z - p.z) < B.song.reviveRadius) { o.dead = false; o.hp = o.max * B.song.reviveHp; o.model.hurt(); sfx('revive', { x: o.x, z: o.z }) } else continue } // levanta quem caiu perto (quem ficou fora só volta no amanhecer)
         else { o.hp = Math.min(o.max, o.hp + B.song.heal); sfx('heal', { x: o.x, z: o.z, delay: Math.random() * 0.15 }) }
         fx.ring(o.x, o.gy || 0, o.z, 0x7aff9a, 0.2, 1.4, 0.7)
         for (let i = 0; i < 3; i++) fx.note(o.x + (Math.random() - 0.5) * 0.8, (o.y || 0) + 1.6, o.z + (Math.random() - 0.5) * 0.8, 0x7aff9a)

@@ -12,10 +12,11 @@ export function CreateSiege({ clock, base, say, sfx }) {
   const st = { night: 0, wasNight: false, warned: false, done: false, pulse: null }
   return {
     st,
-    // a cada quadro: conta as noites, avisa, acha o pico. Devolve 'win' no amanhecer depois da última noite
+    // a cada quadro: conta as noites, avisa, acha o pico. Devolve 'dawn' em cada amanhecer e 'win' no amanhecer depois da última noite
     update() {
       if (!clock || st.done) return null
       const t = clock(), n = isNight(t)
+      let ev = null
       if (n && !st.wasNight) {
         st.night++
         say(`🌙 ${ord(st.night)} noite de ${S.nights}${base.at() ? ': a horda vem atrás da base!' : ' — sem rádio posto, a horda vem atrás de vocês'}`, 4)
@@ -25,6 +26,7 @@ export function CreateSiege({ clock, base, say, sfx }) {
         st.wasNight = false
         if (st.night >= S.nights) { st.done = true; return 'win' }
         say(`☀ Amanheceu. Falta${S.nights - st.night > 1 ? 'm' : ''} ${S.nights - st.night} noite${S.nights - st.night > 1 ? 's' : ''}`, 3.5)
+        ev = 'dawn'
       }
       if (!n && !st.warned && t > D.nightFrom - S.warn && t < D.nightFrom) {
         st.warned = true
@@ -33,7 +35,7 @@ export function CreateSiege({ clock, base, say, sfx }) {
       if (n) st.warned = false
       st.wasNight = n
       st.pulse = n ? S.pulses.find((p) => inside(t, p.from, p.to)) || null : null
-      return null
+      return ev
     },
     // para a horda (à noite, com base): { x, z (base), extra (zumbis a mais), share (fração que nasce na base), ring } · senão null
     director() {

@@ -1,7 +1,7 @@
 // Jogadores controlados pelo computador, SÓ PARA TESTE (?bots=1 a 3 na URL). Não fazem parte do jogo.
 // Usam o mesmo contrato do celular (game.setInput / game.act), como se fossem um celular a mais.
-// Ocupam as vagas livres (a vaga define a classe), seguem o primeiro jogador humano, atacam o zumbi mais perto
-// e usam os botões da classe. Tecla B: espalhar (cada um corre ~30 m para um lado, para testar a tela dividida) / voltar.
+// Ocupam as vagas livres (a vaga define a classe), seguem o primeiro jogador humano, atacam o zumbi mais perto,
+// usam os botões da classe e levantam quem caiu perto. Tecla B: espalhar (cada um corre ~30 m para um lado, para testar a tela dividida) / voltar.
 const near = (a, b) => Math.hypot(a.x - b.x, a.z - b.z)
 
 export function CreateBots(game, count) {
@@ -49,6 +49,14 @@ export function CreateBots(game, count) {
       for (const b of bots) {
         const p = game.players.get(b.id)
         if (!p || p.dead) continue
+        // aliado caído a até 12 m: vai até ele e aperta Usar (levantar)
+        const down = [...game.players.values()].find((o) => o !== p && o.dead && !o.out && near(o, p) < 12)
+        if (down) {
+          const dx = down.x - p.x, dz = down.z - p.z, d = Math.hypot(dx, dz), go = d > 1
+          game.setInput(b.id, { mx: go ? dx / d : 0, mz: go ? dz / d : 0, ax: 0, az: 0, run: d > 4 ? 1 : 0 })
+          if (!go && !p.task) game.act(b.id, 'use')
+          continue
+        }
         // para onde ir: o ponto de espalhar, ou um lugar ao lado do líder
         const a = (b.i / 3) * Math.PI * 2
         const goal = b.goal || (lead ? { x: lead.x + Math.sin(a) * 3, z: lead.z + Math.cos(a) * 3 } : p)

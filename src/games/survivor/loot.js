@@ -69,7 +69,7 @@ export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
     const k = kindOf(s.key), y = s.y + 1
     if (a === 'search') {
       done.set(s.id, 1)
-      if (Math.random() >= L.chance) { say(`${p.name}: ${k.name} sem nada`, 1.4); sfx('ui', { f: 300 }); return }
+      if (Math.random() >= L.chance * (players.size === 1 ? BALANCE.solo.loot : 1)) { say(`${p.name}: ${k.name} sem nada`, 1.4); sfx('ui', { f: 300 }); return }
       give(p, pick(L.rooms[s.room] || L.rooms.terreo))
       fx.burst(s.fx, y, s.fz, 0xffe08a, 8, 3, 0.5)
     } else {

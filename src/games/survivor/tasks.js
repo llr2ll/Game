@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 
 // Tarefas "parado fazendo algo" (revistar, desmontar, barricar…): uma por jogador, em p.task.
-// Mexer (mais de 0,6 m), atacar, ser agarrado, cair ou entrar no carro cancela. A cada segundo faz barulho
+// Mexer (mais de 0,6 m), atacar, ser agarrado, cair (menos no levantar sozinho), entrar no carro ou `valid()` falso cancela. A cada segundo faz barulho
 // (e toca o som `beat`, se houver). Um anel branco cresce sob quem está trabalhando.
 const PROG_GEO = new THREE.RingGeometry(0.82, 1, 32).rotateX(-Math.PI / 2)
 const PROG_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, depthTest: false }) // aparece até atrás de móveis
@@ -10,12 +10,13 @@ const PROG_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: tru
 export function CreateTasks({ scene, noise, sfx }) {
   const progs = new Map() // id do jogador -> anel de progresso
   return {
-    // o = { a (tipo), icon, need (segundos), at {x, z} (de onde sai o barulho), noise (raio), beat (som a cada segundo, opcional), done(p) }
+    // o = { a (tipo), icon, need (segundos), at {x, z} (de onde sai o barulho), noise (raio), beat (som a cada segundo, opcional), done(p),
+    //       down (vale caído), valid() (opcional: falso = cancela) }
     start(p, o) { p.task = { ...o, t: 0, noiseT: 0, x: p.x, z: p.z } },
     tick(p, dt) {
       const k = p.task
       if (!k) return
-      if (p.dead || p.vehicle || p.held || p.firing || Math.hypot(p.x - k.x, p.z - k.z) > 0.6) { p.task = null; return }
+      if ((p.dead && !k.down) || p.vehicle || p.held || p.firing || Math.hypot(p.x - k.x, p.z - k.z) > 0.6 || (k.valid && !k.valid())) { p.task = null; return }
       if ((k.noiseT -= dt) <= 0) {
         k.noiseT = 1
         noise(k.at.x, k.at.z, k.noise)

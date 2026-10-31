@@ -19,11 +19,11 @@ import { CreateTasks } from '../tasks'
 import { CreateBarricades } from '../barricades'
 import { CreateBase } from '../base'
 import { CreateSiege } from '../siege'
+import { CreateFall } from '../fall'
 
 const MAX_PLAYERS = 4
 // números das regras: config/balance.js
 const RU = BALANCE.rules, PL = BALANCE.player, J = BALANCE.juice
-const REVIVE_T = RU.revive.time
 // movimento (shared) com os números deste jogo; a balada do Bardo também acelera
 const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
 // anel da cor da vaga no chão, sob os pés: com classes repetidas, cada um se acha na tela (desenhado depois da sombra)
@@ -74,9 +74,10 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise, impact, night: hooks.night || (() => false) })
   const tasks = CreateTasks({ scene, noise, sfx }) // parado fazendo algo (revistar, desmontar, barricar)
   const loot = CreateLoot({ scene, fx, players, say, sfx, tasks }) // saque nas casas (Usar perto de um móvel)
-  const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact }) // barricadas em portas e janelas (Usar por dentro)
+  const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact, solo: () => players.size === 1 }) // barricadas em portas e janelas (Usar por dentro)
   const base = CreateBase({ scene, say, sfx }) // rádio: a casa onde ele está é a base
   const siege = CreateSiege({ clock: hooks.clock, base, say, sfx }) // noites, picos da horda contra a base, vitória
+  const fall = CreateFall({ players, tasks, inv: loot.inv, fx, say, sfx }) // caído: levantar com ajuda, remédio ou no amanhecer
 
   // slot = vaga do lobby: cor e ponto de largada · choice = classe escolhida (0 Atirador · 1 Samurai · 2 Mago · 3 Bardo; sem escolha = a da vaga)
   function addPlayer(id, name, slot, choice) {
@@ -90,7 +91,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     const p = {
       id, name, idx, cls, model, ring, x: (idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, aimAngle: Math.PI, facing: Math.PI, turn: 0, speed: 0, aiming: false, firing: false,
       jy: 0, vy: 0, gy: 0, y: 0, lv: 0, stamina: 100, tired: false, running: false, cool: 0, kills: 0, lastIn: performance.now(),
-      dead: false, vehicle: null, seat: null, pad: 0, hurtCar: 0, held: 0, struggle: 0, shoveCd: 0, reviveT: 0,
+      dead: false, out: false, downT: 0, vehicle: null, seat: null, pad: 0, hurtCar: 0, held: 0, struggle: 0, shoveCd: 0,
       input: { mx: 0, mz: 0, ax: 0, az: 0, run: 0 },
     }
     InitClassState(p)
@@ -114,9 +115,10 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   // ações: b1/b2/b3 = botões da classe · shove = empurrar/pisar · use = entrar/sair do veículo · jump · (atirador) armas pelo nome
   function act(id, a) {
     const p = players.get(id)
-    if (!p || p.dead) return
+    if (!p) return
+    if (p.dead) { if (a === 'use') fall.use(p); return } // caído: só Usar (no solo, levantar sozinho)
     if (a === 'shove') return horde.shove(p)
-    if (a === 'use') { if (!p.vehicle && !p.held && (bars.use(p, true) || loot.use(p) || base.use(p) || bars.use(p))) return; return (!p.held || p.vehicle) && vehicles.use(p) } // móvel ao alcance primeiro; agarrado não entra no carro
+    if (a === 'use') { if (!p.vehicle && !p.held && (fall.use(p) || bars.use(p, true) || loot.use(p) || base.use(p) || bars.use(p))) return; return (!p.held || p.vehicle) && vehicles.use(p) } // aliado caído primeiro, depois barricada e móvel; agarrado não entra no carro
     if (a === 'b1' || a === 'b2' || a === 'b3') return abilities.skill(p, +a[1] - 1)
     if (a === 'swap') return abilities.skill(p, 0) // controles antigos
     if (a === 'reload') return p.cls.id === 'gunner' && abilities.skill(p, 1)
@@ -135,12 +137,12 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   }
   function die(p) {
     p.hp = 0; p.dead = true; p.reload = 0; p.dashT = 0; p.struggle = 0
-    p.reviveT = REVIVE_T
     if (p.vehicle) vehicles.exit(p, true)
     p.model.die()
     sfx('death', { x: p.x, z: p.z, cls: p.cls.id })
+    fall.down(p)
   }
-  // quem caiu volta depois de um tempo ao lado de um aliado vivo (o bardo revive na hora com a canção)
+  // no amanhecer, quem está no chão volta ao lado de um aliado de pé (levantar ali mesmo: fall.js; o bardo levanta com a canção)
   function revive(p, list) {
     let best = list[0]
     for (const o of list) if ((o.x - p.x) ** 2 + (o.z - p.z) ** 2 < (best.x - p.x) ** 2 + (best.z - p.z) ** 2) best = o
@@ -149,7 +151,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
       const a = (n / 8) * Math.PI * 2, tx = best.x + Math.sin(a) * 1.4, tz = best.z + Math.cos(a) * 1.4
       if (!Blocked(tx, tz, 0.5, best.lv || 0)) { x = tx; z = tz; break }
     }
-    Object.assign(p, { dead: false, hp: p.max * RU.revive.hp, x, z, vx: 0, vz: 0, jy: 0, vy: 0, lv: best.lv || 0, gy: best.gy, stamina: 100, tired: false, invulnT: RU.revive.invulnerable })
+    Object.assign(p, { dead: false, out: false, downT: 0, hp: p.max * RU.fall.hp, x, z, vx: 0, vz: 0, jy: 0, vy: 0, lv: best.lv || 0, gy: best.gy, stamina: 100, tired: false, invulnT: RU.fall.invulnerable })
     p.model.hurt()
     fx.ring(x, best.gy || 0, z, 0x7aff9a, 0.2, 1.6, 0.7)
     say(`${p.name} voltou!`, 1.8)
@@ -167,6 +169,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   }
   function clearAll() {
     siege.clear()
+    fall.clear()
     loot.clear()
     bars.clear()
     base.clear()
@@ -189,7 +192,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     vehicles.clear()
     Object.assign(st, { time: 0, score: 0, over: false, stopT: 0, result: null })
     for (const p of players.values()) {
-      Object.assign(p, { dead: false, stamina: 100, tired: false, jy: 0, vy: 0, lv: 0, gy: undefined, x: (p.idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, held: 0, struggle: 0, reviveT: 0 })
+      Object.assign(p, { dead: false, stamina: 100, tired: false, jy: 0, vy: 0, lv: 0, gy: undefined, x: (p.idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, held: 0, struggle: 0, out: false, downT: 0 })
       InitClassState(p)
       if (p.weapon) p.model.setWeapon(p.weapon)
     }
@@ -211,17 +214,19 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
       if (p.drown && !p.dead) { p.hp -= PL.drown * dt; if (p.hp <= 0) die(p) } // sem fôlego na água funda
     }
 
-    // cerco: começa ao meio-dia; aguentar as noites até o resgate; quem cai volta ao lado de um aliado
+    // cerco: começa ao meio-dia; aguentar as noites até o resgate. Quem cai espera ajuda (fall.js); no amanhecer todos voltam
     if (players.size && !st.over) {
       if (st.time === 0) {
         if (hooks.setClock) hooks.setClock(BALANCE.siege.start)
+        fall.start()
         say(`📻 Rádio: o exército chega no amanhecer do ${BALANCE.siege.nights + 1}º dia. Ponham o rádio numa casa e barriquem!`, 6)
       }
       st.time += dt
-      const list = alive()
-      for (const p of players.values()) if (p.dead && list.length && (p.reviveT -= dt) <= 0) revive(p, list)
-      if (siege.update() === 'win') finish(true)
-      else if (!alive().length) finish(false)
+      fall.tick(dt)
+      const ev = siege.update()
+      if (ev === 'dawn') { const list = alive(); for (const p of fall.dawn()) list.length ? revive(p, list) : fall.rise(p) }
+      if (ev === 'win') finish(true)
+      else if (!alive().length && !fall.canRise()) finish(false) // todos no chão ao mesmo tempo (no solo: sem como levantar)
     } else if (st.over && (st.overT -= dt) <= 0) { if (hooks.onEnd) hooks.onEnd(); else restart() }
 
     // zumbis e veículos
@@ -229,7 +234,9 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     vehicles.update(dt, list, enemies, list.length ? list : [{ x: 0, z: 0 }], { hit, impact })
     for (const p of list) { // depois dos veículos: quem está sentado já tem a posição do banco
       p.model.animate(dt, p)
-      p.ring.visible = !p.vehicle
+      p.ring.visible = !p.vehicle && !p.out
+      const k = p.dead ? 1 + 0.35 * Math.abs(Math.sin(st.time * 5)) : 1 // caído: o anel pulsa (pedido de ajuda)
+      p.ring.scale.set(k, 1, k)
       p.ring.position.set(p.x, (p.y || 0) - (p.jy || 0) + 0.1, p.z) // no chão, mesmo pulando
     }
     wfx.update(dt, list.filter((p) => !p.vehicle), enemies)
@@ -249,14 +256,14 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
         if (p.id === 'local') continue
         const inf = abilities.info(p)
         const car = p.vehicle ? 2 : !p.dead && vehicles.nearest(p) ? 1 : 0
-        net.send(p.id, { t: 'state', hp: Math.ceil(p.hp), max: p.max, cls: `${p.cls.icon} ${p.cls.name}`, w: inf.text, btn: inf.buttons.map((b) => [b.l, +b.cd.toFixed(2)]), car, dead: p.dead, st: Math.round(p.stamina), time: Math.floor(st.time), score: st.score, held: p.held ? 1 : 0, rv: p.dead && !st.over ? Math.ceil(p.reviveT) : 0, u: bars.label(p, true) || loot.label(p) || base.label(p) || bars.label(p), inv: invText() })
+        net.send(p.id, { t: 'state', hp: Math.ceil(p.hp), max: p.max, cls: `${p.cls.icon} ${p.cls.name}`, w: inf.text, btn: inf.buttons.map((b) => [b.l, +b.cd.toFixed(2)]), car, dead: p.dead, st: Math.round(p.stamina), time: Math.floor(st.time), score: st.score, held: p.held ? 1 : 0, rv: p.dead && !st.over ? (p.out ? -1 : Math.ceil(p.downT)) : 0, u: fall.label(p) || bars.label(p, true) || loot.label(p) || base.label(p) || bars.label(p), inv: invText() })
       }
     }
   }
 
   // estoque do grupo + base marcada (placar e celular)
   const invText = () => loot.text() + (base.at() ? '  📻' : '')
-  return { players, enemies, vehicles, loot, bars, base, siege, invText, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p) }
+  return { players, enemies, vehicles, loot, bars, base, siege, invText, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p), hurt }
 }
 
 export const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`

@@ -33,8 +33,8 @@ const winEntry = (w) => ({ kind: 'window', id: w.id, x: w.x, z: w.z, ox: w.nx, o
 const inside = (en, k = 0.8) => ({ x: en.x - en.ox * k, z: en.z - en.oz * k }) // ponto dentro da casa, na frente da entrada
 const outside = (en, k = 0.6) => ({ x: en.x + en.ox * k, z: en.z + en.oz * k })
 
-// ctx: { scene, fx, inv (estoque do grupo), say(texto, s), sfx(nome, opções), tasks, impact(x, z, tipo, força) }
-export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact }) {
+// ctx: { scene, fx, inv (estoque do grupo), say(texto, s), sfx(nome, opções), tasks, impact(x, z, tipo, força), solo() (jogando sozinho?) }
+export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact, solo = () => false }) {
   const bars = new Map() // id da entrada -> { id, kind, x, z, hp, max, strong, b, door, group, col, boards, hpFill, flashT }
   const wins = new Map() // id da janela -> { id, glass, broken, en, hole }
   const usable = new Map() // id da janela -> dá para pular para dentro? (móvel ou escada na frente = não)
@@ -148,7 +148,7 @@ export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact }) {
   }
   // uma pancada de zumbi numa barricada
   function hit(bar) {
-    bar.hp -= Z.bash.damage
+    bar.hp -= Z.bash.damage * (solo() ? BALANCE.solo.bash : 1)
     sfx('bang', { x: bar.x, z: bar.z })
     fx.burst(bar.x, 1.1, bar.z, 0xb07a48, 3, 2.5, 0.35)
     if (bar.boards) { for (const m of bar.boards) m.material = WOOD_HIT; bar.flashT = 0.08 }

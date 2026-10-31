@@ -32,7 +32,7 @@ Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesm
   3. **Caches:** gera um trecho de novo com os limites dos caches encolhidos (x0, x0,004, x0,02), esquecendo antes de cada chunk;
      tem de dar igual. Pega cache que guarda estado ou caches ligados esquecidos separados (testado: acusa o erro).
   4. **Jogo (replay):** `scripts/sim.mjs` joga 100 s com 4 jogadores (uma classe cada) com sorteio e relógio fixos e compara o hash com
-     `scripts/sim-fingerprint.txt` (o relógio do dia anda das 16h48 até as 4h48; quadro 600: o 4º jogador revista e desmonta um móvel; quadro 761: põe o rádio; quadro 1700, à noite: barrica e reforça uma porta; à noite o cerco manda zumbis para a base). **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
+     `scripts/sim-fingerprint.txt` (o relógio do dia anda das 16h48 até as 4h48; quadro 600: o 4º jogador revista e desmonta um móvel; quadro 761: põe o rádio; quadro 1000: o 3º jogador cai e o 2º levanta; quadro 1300: o 1º cai sem ajuda e fica fora; quadro 1700, à noite: barrica e reforça uma porta; à noite o cerco manda zumbis para a base). **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
      e dizer isso na descrição. Detalhes que importam: roda em processo novo; só sorteios feitos por código de `src/` entram na sequência fixa
      (o Vite e o Three.js também sorteiam, e isso mudaria com a ordem dos arquivos). `SIM_TRACE=arquivo node scripts/sim.mjs` grava o rastro
      quadro a quadro para achar onde dois replays se separam.
@@ -77,12 +77,13 @@ src/games/survivor/       este jogo
   main.js                 liga tudo: renderer, clima, lobby, rede, teclado, loop; Wire() conecta motor ↔ mundo ↔ sons
   config/balance.js       TODOS os números ajustáveis (classes, armas, habilidades, zumbis, regras, dia), comentados em português
   config/weapons.js       nomes e ordem das armas (números vêm do balance.js)
-  rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, vitória/derrota + resultado
+  rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte, vitória/derrota + resultado
   abilities/classes.js    as 4 classes e suas habilidades
   loot.js                 saque (J3): revistar/desmontar móveis, estoque do grupo, marcadores
   barricades.js           entradas: portas (J4) e janelas do térreo (J5a) — barricar/consertar/reforçar por dentro; zumbi bate até quebrar,
                           quebra o vidro e pula a janela; barrinha de vida
   base.js                 rádio (J5a): a casa onde ele está é a base (o cerco vai atrás dela)
+  fall.js                 queda (J6): 40 s no chão, levantar (aliado 3 s / remédio / solo sozinho), fora até o amanhecer
   siege.js                cerco (J5b): conta as noites, avisos do rádio, picos da horda, vitória no amanhecer do 3º dia
   tasks.js                "parado fazendo algo" (revistar, desmontar, barricar): cancelamento, barulho por segundo, anel de progresso
   bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
@@ -123,8 +124,9 @@ Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - `game.act(id, ação)` — `b1` `b2` `b3` (botões da classe) · `shove` · `use` (carro) · `jump` · `reload` · `swap` · `carbine` `shotgun` `pistol`.
 - Celular → relay: `{t:'join', code, name}`, `{t:'in', mx, mz, ax, az, run}` a cada 33 ms, `{t:'act', a}`.
 - Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv, u, inv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
-  `u` = texto do botão Usar (🪵 Barricar/🔨 Consertar/🪵 Reforçar · 🔍 Revistar/🪚 Desmontar); `inv` = estoque do grupo.
-  `use`: barricada (se há tábuas) → móvel → rádio (pôr/pegar) → aviso "precisa de tábuas" → carro.
+  `u` = texto do botão Usar (🤝 Levantar/🩹 Levantar já/💪 Levantar sozinho · 🪵 Barricar/🔨 Consertar/🪵 Reforçar · 🔍 Revistar/🪚 Desmontar);
+  `inv` = estoque do grupo; `rv` = segundos que o caído ainda espera ajuda (-1 = fora até o amanhecer).
+  `use`: aliado caído → barricada (se há tábuas) → móvel → rádio (pôr/pegar) → aviso "precisa de tábuas" → carro. Caído: só `use` (solo).
 - No menu: celular manda `{t:'act', a:'prev'|'next'}` para trocar a classe (o `main.js` manda para `lobby.pick` só na fase de menu);
   a tela manda `{t:'lobby', slot, total, pick}` (pick = texto da classe escolhida). `game.addPlayer(id, nome, vaga, classe)`.
 - Jogador do teclado tem id `'local'`. Bots de teste têm id `bot1`…`bot3` e usam o mesmo contrato (`games/survivor/bots.js`).
@@ -202,6 +204,11 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
   investigar a base (não somem ao amanhecer nem por estarem longe dos jogadores, enquanto durar a noite). Sem rádio: horda normal.
   Partida de 2 noites ≈ 17 min (`day.seconds` 600). Munição só do saque (`rules.ammoCap`); os suprimentos a cada 75 s saíram.
   Derrota = todos caídos ao mesmo tempo. Resultado em `st.result` (painel `#result` no `hud.js`) por `rules.resultTime` s.
+- **Queda (J6):** `p.dead` = no chão (caído ou fora); `p.out` = fora até o amanhecer; `p.downT` = tempo de espera. `fall.js` levanta no lugar;
+  no amanhecer (`siege.update()` devolve `'dawn'`) quem está no chão volta ao lado de alguém de pé (`revive` em `survival.js`).
+  O levantar é uma tarefa (`tasks.js`, `a: 'lift'`; `down: true` vale caído, `valid()` cancela se o outro já levantou). Derrota = ninguém de pé
+  e ninguém pode levantar sozinho (`fall.canRise()`, só no solo). Solo = 1 jogador (`players.size`); bots contam como jogador.
+  `game.hurt(p, dano)` fica exposto para testes (replay).
 - `window.__game` existe só no `npm run dev` (testes automáticos e depuração); a versão compilada não tem.
 - Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
   guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
@@ -209,7 +216,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
 
 ## Plano da sessão de fundação (30/10/2026)
 0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR #5) · F3 (PR aberto).
-4. Vertical slice (seção 10 do GAME-DESIGN), um PR por vez: J1 · J2 · J3 · J4 · J5a · J5b (PRs abertos, aguardando merge em ordem) · próximo: J6 (regra de queda).
+4. Vertical slice (seção 10 do GAME-DESIGN), um PR por vez: J1 · J2 · J3 · J4 · J5a · J5b · J6 (PRs abertos, aguardando merge em ordem) · próximo: J7 (XP, níveis e melhorias).
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -222,6 +229,10 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j6-queda (J6)** — quem cai fica 40 s no chão (anel pulsando, tempo no placar e no celular); aliado ao lado levanta com Usar (3 s parado,
+  o tempo do caído para); Usar de novo durante o levantar gasta 1 🩹 e levanta na hora; sem ajuda → fora até o amanhecer (volta ao lado de alguém).
+  Acabou a volta automática em 25 s. Canção do Bardo levanta só quem não está fora. Solo: 1 🩹 no começo, levanta sozinho 1x até cada amanhecer,
+  saque +20%, barricadas perdem vida 25% mais devagar. Bots de teste levantam quem cai perto. Replay atualizado de propósito (cena de queda).
 - **j5b-cerco (J5b)** — a partida vira o cerco: começa ao meio-dia, rádio avisa ("o exército chega no amanhecer do 3º dia" e 2 h antes de escurecer);
   à noite o diretor manda a horda contra a base em 2 picos (21h e 2h; 12 zumbis a mais, ×1,6 na 2ª noite, 75% nascem a 40–50 m da base).
   Vitória no amanhecer do 3º dia; derrota quando todos caem; tela de resultado. Suprimentos automáticos de munição removidos (munição só do saque).

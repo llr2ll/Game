@@ -64,6 +64,11 @@ export async function SimFingerprint(vite, frames = 3000) {
       // barricada: no quadro 1700 (noite) o mesmo jogador entra na casa mais perto, barrica e reforça a porta (parado até 1900)
       // rádio: depois do saque, o mesmo jogador põe o rádio nessa casa (vira a base do cerco)
       if (looter && f === 761) game.base.use(looter)
+      // queda: no quadro 1000 o 3º jogador cai e o 2º, ao lado, levanta (Usar, 3 s parado até 1100);
+      // no quadro 1300 o 1º cai sozinho e ninguém ajuda (fica fora até o amanhecer, que o replay não alcança)
+      const [first, helper, fallen] = list
+      if (fallen && f === 1000) { Object.assign(helper, { x: fallen.x + 1, z: fallen.z, lv: fallen.lv || 0, vx: 0, vz: 0 }); fallen.invulnT = 0; game.hurt(fallen, 9999) }
+      if (first && f === 1300) { first.invulnT = 0; game.hurt(first, 9999) }
       if (looter && f === 1700) {
         game.loot.inv.tabuas += 4
         const d = reg.DoorsNear(0, 0, 60).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]
@@ -73,6 +78,11 @@ export async function SimFingerprint(vite, frames = 3000) {
         if (p === looter && f >= 1700 && f < 1900) {
           game.setInput(p.id, { mx: 0, mz: 0, ax: 0, az: 0, run: 0, fire: 0 })
           if (f === 1701 || f === 1790) game.act(p.id, 'use')
+          return
+        }
+        if (p === helper && f >= 1000 && f < 1100) {
+          game.setInput(p.id, { mx: 0, mz: 0, ax: 0, az: 0, run: 0, fire: 0 })
+          if (f === 1001) game.act(p.id, 'use')
           return
         }
         if (p === looter && f >= 600 && f < 760) {
@@ -105,7 +115,7 @@ export async function SimFingerprint(vite, frames = 3000) {
     const r = (v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v)
     const state = {
       st: { time: r(game.st.time), score: game.st.score, over: game.st.over },
-      players: [...game.players.values()].map((p) => [p.id, r(p.x), r(p.z), r(p.hp), r(p.stamina), r(p.mana), p.kills, p.dead, p.weapon, JSON.stringify(p.ammo), !!p.vehicle]),
+      players: [...game.players.values()].map((p) => [p.id, r(p.x), r(p.z), r(p.hp), r(p.stamina), r(p.mana), p.kills, p.dead, p.weapon, JSON.stringify(p.ammo), !!p.vehicle, !!p.out]),
       enemies: game.enemies.map((e) => [r(e.x), r(e.z), r(e.hp), e.state, e.fast]),
       cars: game.vehicles.list.length,
       loot: game.loot.text(),
@@ -115,7 +125,7 @@ export async function SimFingerprint(vite, frames = 3000) {
       base: !!game.base.at(),
     }
     off()
-    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'} · noite ${state.night}${state.base ? ' · base' : ''} · ${state.siege} do cerco` }
+    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 de pé (${state.players.filter((p) => p[11]).length} fora) · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'} · noite ${state.night}${state.base ? ' · base' : ''} · ${state.siege} do cerco` }
   } finally {
     Math.random = realRandom
     Error.stackTraceLimit = realLimit

@@ -42,7 +42,7 @@ O comando `npm run check` confere essa regra sozinho.
 |---|---|---|---|
 | 🏗️ Térreo: o motor | `src/engine/` | O que qualquer jogo precisa: desenhar a tela, dividir a tela, ler teclado e celular, falar com o servidor, tocar som, carregar o mapa em pedaços, colisão | Não sabe que existem zumbis. Os 3 jogos (este, o souls-like e o RPG) usam igual |
 | 🧱 1º andar: peças prontas | `src/shared/` | Personagens e animações, o modelo do zumbi, o mundo (estradas, vilas, casas, placas, clima, água), carros, efeitos, a biblioteca de sons | Cada jogo escolhe as peças que quer usar |
-| 🎮 2º andar: este jogo | `src/games/survivor/` | As regras do survivor: classes e habilidades, armas, a horda de zumbis, morte e revive, placar | As regras de um jogo não vazam para os outros |
+| 🎮 2º andar: este jogo | `src/games/survivor/` | As regras do survivor: classes e habilidades, armas, a horda de zumbis, morte e queda, placar | As regras de um jogo não vazam para os outros |
 
 Quando uma peça de baixo precisa que algo aconteça em cima, ela **avisa** em vez de chamar direto.
 Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador do mapa avisa "aqui cabe um carro" e o jogo decide se cria o carro.
@@ -70,7 +70,8 @@ Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador
 | `src/games/survivor/base.js` | O rádio que marca a casa-base | 📻 no placar |
 | `src/games/survivor/siege.js` | O cerco: conta as noites, avisa pelo rádio, manda a horda contra a base à noite, decide a vitória | "🌙 Noite 1/2 · 🧟 pico!" |
 | `src/games/survivor/bots.js` | Jogadores do computador, só para teste (`?bots=3`) | 🤖 Bot 1 no placar |
-| `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, vitória/derrota e a tela de resultado | "🚁 VITÓRIA · 2/2 noites" |
+| `src/games/survivor/fall.js` | Quem cai: 40 s no chão, levantar com ajuda ou remédio, fora até o amanhecer, ajustes do solo | "🆘 Ana caiu! Levantem em 40 s" |
+| `src/games/survivor/rules/` | **As regras**: dano, morte, vitória/derrota e a tela de resultado | "🚁 VITÓRIA · 2/2 noites" |
 | `src/games/survivor/abilities/` | As 4 classes e as habilidades | Samurai dando a investida |
 | `src/games/survivor/enemies/` | O que os zumbis veem, ouvem e fazem | Zumbi vindo atrás do barulho do tiro |
 | `scripts/` | Testes automáticos: `smoke` (abre o jogo e procura erros) e `check` (andares + mapa igual) | — |

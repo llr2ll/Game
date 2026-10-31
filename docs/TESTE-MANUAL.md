@@ -21,7 +21,8 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | 8 | **Carro**: chegue perto de um carro (há carros na largada), E entra, WASD dirige, E sai | O botão 🚗 aparece no celular perto do carro. Motor faz barulho | ☐ |
 | 9 | **Casa**: entre por uma porta e suba a escada (fica no fundo da casa) | A porta abre sozinha. O telhado some e você vê o andar de cima | ☐ |
 | 10 | **Tela dividida**: afaste o celular e o teclado (~20 passos) e depois junte | A tela se divide em duas e depois volta a ser uma | ☐ |
-| 11 | **Morrer e voltar**: deixe um jogador ser mordido até cair | Com 2 jogadores: volta em 25 s ao lado do outro. Sozinho: tela "💀 DERROTA" com noites, abates e estoque; uns 12 s depois volta ao menu | ☐ |
+| 11 | **Cair e levantar** (2 jogadores): deixe um ser mordido até cair; o outro chega perto e aperta E (ou Usar no celular) | O caído fica no chão com o anel piscando · "🆘 caído 40s" no placar e "Você caiu! Ns" no celular · o botão vira "🤝 Levantar" · anel cresce por 3 s · ele levanta. Deixe cair de novo e não ajude: em 40 s "💀 fora até o amanhecer" | ☐ |
+| 11b | **Sozinho**: caia | "🆘 Você caiu! Usar = levantar sozinho" · E levanta em 3 s. Caia de novo: Usar gasta o 🩹 do começo. Na 3ª queda: tela "💀 DERROTA" e, ~12 s depois, o menu | ☐ |
 | 12 | **Noite**: a partida começa ao meio-dia; aperte N várias vezes (+1 hora cada) até 20:00 | O céu escurece, os postes acendem e aparecem mais zumbis | ☐ |
 | 13 | **Esc** durante a partida | Volta ao menu sem travar | ☐ |
 | 14 | **Sensação**: atire, jogue granada, dê o 3º golpe da katana | Anel fraco no chão até onde o som foi · zumbi pisca branco · a tela treme na explosão · o 3º golpe dá um "tranco" curtinho · à noite o tiro clareia o chão | ☐ |

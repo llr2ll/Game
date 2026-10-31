@@ -49,7 +49,7 @@ export function CreateHud(game, climate) {
         const car = p.vehicle ? ` · 🚗 ${p.vehicle.d.name}${p.seat.mode === 'drive' ? ' (dirigindo)' : ''}` : ''
         const mana = p.cls.id === 'mage' ? `<div class="bar mana"><i style="width:${p.mana}%"></i></div>` : ''
         const task = p.task ? ` · ${p.task.icon} ${Math.round((p.task.t / p.task.need) * 100)}%` : ''
-        const state = p.dead ? (game.st.over ? '' : ` · 💀 volta em ${Math.ceil(p.reviveT)}s`) : p.held ? ' · <span class="grab">🧟 AGARRADO! (V)</span>' : ''
+        const state = p.dead ? (game.st.over ? '' : p.out ? ' · 💀 fora até o amanhecer' : ` · 🆘 caído ${Math.ceil(p.downT)}s`) : p.held ? ' · <span class="grab">🧟 AGARRADO! (V)</span>' : ''
         return `<div class="pl ${p.dead ? 'dead' : ''}" style="border-left:4px solid ${PLAYER_COLORS[p.idx % 4]}"><b>${p.cls.icon} ${p.name}</b> · ${inf.text} · ${p.kills} abates${car}${p.buffT > 0 ? ' · ✨' : ''}${task}${state}<div class="bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div>${mana}${cds ? `<div class="cds">${cds}</div>` : ''}</div>`
       }).join('')
     },

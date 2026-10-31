@@ -30,7 +30,7 @@ A partida é o **cerco** (seção abaixo): de dia a horda vaga; à noite ela vai
 - **Renascer perto**: a horda é mantida em volta dos jogadores (mais à noite, nos povoados e com o tempo; corredores ficam mais comuns). Zumbi a mais de 52 m de todos (ou em chunk descarregado) renasce num anel de 24–36 m em volta de um jogador, fora da vista. Corpos ficam no chão e afundam.
 - `zombie-model.js` – zumbi articulado (12 variações de roupa/pele com sangue e rasgos), mancando, curvado, braços estendidos, bote, mordida, tropeço, queda de costas/de bruços, levantar, comer quem caiu.
 - `pathing.js` – desvio de obstáculos, A* quando trava, portas e escadas das casas.
-- Quem cai volta em 25 s ao lado de um aliado vivo (a canção do bardo revive na hora). Munição só vem do saque. Derrota quando todos caem ao mesmo tempo.
+- Quem cai fica no chão (o anel da cor pulsa) — veja **Queda** abaixo. Munição só vem do saque. Derrota quando todos estão caídos ao mesmo tempo.
 
 ## Classes (cada jogador escolhe no menu; repetir pode)
 Cada vaga começa numa classe (1 Atirador, 2 Samurai, 3 Mago, 4 Bardo) e troca com ◀ ▶. A cor da vaga vira um anel no chão sob o jogador.
@@ -40,7 +40,7 @@ Cada vaga começa numa classe (1 Atirador, 2 Samurai, 3 Mago, 4 Bardo) e troca c
 | 1 | 🔫 Atirador | carabina / espingarda / pistola | Trocar arma · Recarregar · Granada |
 | 2 | ⚔️ Samurai (130 PV) | combo de katana em 3 golpes (o 3º é pesado) | Investida (atravessa cortando, invulnerável) · Redemoinho |
 | 3 | 🔮 Mago (85 PV, mana) | dardo mágico que persegue o alvo | Meteoro (área marcada no chão) · Nova de gelo (deixa lentos) |
-| 4 | 🪕 Bardo | onda sonora em cone que empurra | Canção de cura (cura e revive quem caiu perto) · Balada da coragem (+dano e +velocidade) |
+| 4 | 🪕 Bardo | onda sonora em cone que empurra | Canção de cura (cura e levanta quem caiu perto) · Balada da coragem (+dano e +velocidade) |
 
 Números (vida, velocidade, recargas, dano, alcance, mana, barulho) em **`src/games/survivor/config/balance.js`**; comportamento em `src/games/survivor/abilities/classes.js`; efeitos em `src/shared/fx/effects.js` (anéis, arcos, clarões, fumaça, notas).
 
@@ -64,6 +64,9 @@ As **janelas do térreo** também são entradas: zumbi atrás de alguém dentro 
 
 ## O cerco (a partida)
 A partida começa ao **meio-dia do dia 1** e o rádio avisa: o exército chega no **amanhecer do 3º dia** — aguentem **2 noites**. Duas horas antes de escurecer o rádio lembra de barricar. À noite o placar mostra "🌙 Noite 1/2" e o **diretor da noite** manda a horda contra a base (a casa do rádio): 2 **picos** por noite (perto das 21h e das 2h, "🧟 pico!"), com zumbis a mais nascendo a 40–50 m da base, fora da vista; a 2ª noite é mais forte. Sem rádio posto, a horda vem atrás de vocês, como de dia. **Vitória** no amanhecer do 3º dia; **derrota** se todos caírem ao mesmo tempo. Uma tela de resultado mostra noites, tempo, abates, pontos, barricadas, janelas quebradas e o estoque, e depois volta ao menu. Código em `src/games/survivor/siege.js`; números em `balance.js`, seção `siege`.
+
+## Queda
+Quem cai fica no chão por **40 s** esperando ajuda (o anel da cor pulsa; o placar e o celular mostram o tempo). Um aliado ao lado aperta **Usar** ("🤝 Levantar") e fica parado **3 s**: o caído levanta com metade da vida (o tempo dele para enquanto isso). Durante o levantar, **Usar de novo** gasta 1 🩹 remédio e levanta na hora. A canção de cura do Bardo também levanta quem caiu perto. Sem ajuda em 40 s, a pessoa fica **fora até o próximo amanhecer** e volta ao lado de alguém de pé. **Sozinho:** começa com 1 🩹; caído, Usar levanta sozinho (3 s) 1 vez até cada amanhecer, ou com o remédio; o saque acha 20% mais e as barricadas perdem vida 25% mais devagar. Código em `src/games/survivor/fall.js`; números em `balance.js`, seções `rules.fall` e `solo`. Os bots de teste (`?bots=`) levantam quem cai perto.
 
 ## Sensação ("juice")
 Anel fraco no chão mostra até onde o barulho chegou (tiro, música, explosão: os zumbis ouvem até ali). Zumbi pisca branco ao levar golpe. Explosão, batida, atropelamento, espingarda, 3º golpe da katana e pisão tremem a tela (só as telas perto). Golpes fortes dão uma pausa de 40 ms. À noite o tiro clareia o chão. Tudo ajustável (ou desligável) em `src/games/survivor/config/balance.js`, seção `juice`.

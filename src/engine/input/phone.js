@@ -63,7 +63,7 @@ function onState(m) {
   $('#shove').classList.toggle('alert', !!m.held)
   $('#st i').style.width = `${m.st}%`
   if (m.st <= 0 && input.run) { input.run = 0; $('#run').classList.remove('on') }
-  showState(m.dead ? (m.rv ? `Você caiu — volta em ${m.rv}s` : 'Você caiu') : m.held ? 'AGARRADO!\nEmpurre ou puxe para longe' : '')
+  showState(m.dead ? (m.rv > 0 ? `Você caiu! ${m.rv}s` : m.rv < 0 ? 'Fora até o amanhecer' : 'Você caiu') : m.held ? 'AGARRADO!\nEmpurre ou puxe para longe' : '')
   if (m.held && !lastHeld) navigator.vibrate?.([80, 40, 80])
   lastHeld = !!m.held
   if (m.hp < lastHp) navigator.vibrate?.(60)
