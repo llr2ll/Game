@@ -59,6 +59,9 @@ Móveis com gaveta (cômoda, baú, guarda-roupa, estante, fogão, balcão, caixo
 ## Barricadas
 De **dentro** de uma casa, perto da porta, **Usar** prega tábuas do estoque do grupo: **Barricar** (2 🪵), depois **Consertar** (1 🪵) quando apanhar e **Reforçar** (2 🪵, vida em dobro). O martelo faz barulho. A barricada **só segura zumbis**: gente e tiro passam pela fresta. Zumbi encostado bate até quebrar; as tábuas caem e uma barrinha sobre a porta mostra a vida (verde → amarelo → vermelho). Números em `balance.js`, seção `barricade` (e `zombies.bash`).
 
+## Janelas e rádio (base)
+As **janelas do térreo** também são entradas: zumbi atrás de alguém dentro de uma casa vai pela janela se ela estiver mais perto que a porta — bate na barricada (se houver), **quebra o vidro** e **pula para dentro** (leva 1,5 s; dá tempo de acertar). Janela quebrada fica quebrada. Janela aceita barricada como a porta (Usar perto dela, por dentro). **Rádio:** dentro de uma casa, num lugar livre, Usar → "📻 Pôr rádio": essa casa vira a **base** (📻 no placar, anel verde pulsando). Usar perto dele pega de volta. O cerco noturno (próximo PR) vai atrás da base. Números em `balance.js`, seções `window` e `radio`.
+
 ## Sensação ("juice")
 Anel fraco no chão mostra até onde o barulho chegou (tiro, música, explosão: os zumbis ouvem até ali). Zumbi pisca branco ao levar golpe. Explosão, batida, atropelamento, espingarda, 3º golpe da katana e pisão tremem a tela (só as telas perto). Golpes fortes dão uma pausa de 40 ms. À noite o tiro clareia o chão. Tudo ajustável (ou desligável) em `src/games/survivor/config/balance.js`, seção `juice`.
 

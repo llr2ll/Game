@@ -66,7 +66,8 @@ Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador
 | `src/games/survivor/main.js` | Liga todas as peças deste jogo | — |
 | `src/games/survivor/config/` | **Todos os números para ajustar o jogo** (`balance.js`) | Vida do Samurai, dano da espingarda |
 | `src/games/survivor/loot.js` | O saque: revistar e desmontar móveis, o estoque do grupo | "Jogador 1 achou 🩹 remédio" |
-| `src/games/survivor/barricades.js` | As barricadas nas portas e os zumbis batendo nelas | "⚠ Barricada sob ataque!" |
+| `src/games/survivor/barricades.js` | Portas e janelas: barricadas, zumbis batendo, vidro quebrando, zumbi pulando a janela | "⚠ Barricada sob ataque!" |
+| `src/games/survivor/base.js` | O rádio que marca a casa-base | 📻 no placar |
 | `src/games/survivor/bots.js` | Jogadores do computador, só para teste (`?bots=3`) | 🤖 Bot 1 no placar |
 | `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, suprimentos, fim de jogo | "FIM DE JOGO · sobreviveram 03:12" |
 | `src/games/survivor/abilities/` | As 4 classes e as habilidades | Samurai dando a investida |

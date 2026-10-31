@@ -66,6 +66,21 @@ export function DoorsNear(x, z, r) {
   return out
 }
 
+// casa que contém o ponto (ou null)
+export function BuildingAt(x, z) {
+  for (const b of set) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) return b
+  return null
+}
+// janelas do térreo das casas carregadas a menos de r de (x, z): { id, x, z, nx, nz (para fora), w, y, b }
+export function WindowsNear(x, z, r) {
+  const out = []
+  for (const b of set) {
+    if (x < b.x0 - r || x > b.x1 + r || z < b.z0 - r || z > b.z1 + r) continue
+    for (const w of b.windows) if (Math.hypot(w.x - x, w.z - z) < r) out.push({ ...w, b })
+  }
+  return out
+}
+
 // móveis das casas carregadas a menos de r de (x, z), no andar lv (cada um: { x, z, y, lv, key, room, r, id })
 export function SpotsNear(x, z, lv, r) {
   const out = []

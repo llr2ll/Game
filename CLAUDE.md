@@ -80,7 +80,9 @@ src/games/survivor/       este jogo
   rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, suprimentos, fim de jogo
   abilities/classes.js    as 4 classes e suas habilidades
   loot.js                 saque (J3): revistar/desmontar móveis, estoque do grupo, marcadores
-  barricades.js           barricadas (J4): barricar/consertar/reforçar a porta por dentro; zumbi bate até quebrar; barrinha de vida
+  barricades.js           entradas: portas (J4) e janelas do térreo (J5a) — barricar/consertar/reforçar por dentro; zumbi bate até quebrar,
+                          quebra o vidro e pula a janela; barrinha de vida
+  base.js                 rádio (J5a): a casa onde ele está é a base (o cerco do J5b vai atrás dela)
   tasks.js                "parado fazendo algo" (revistar, desmontar, barricar): cancelamento, barulho por segundo, anel de progresso
   bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
   enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
@@ -120,7 +122,7 @@ Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - Celular → relay: `{t:'join', code, name}`, `{t:'in', mx, mz, ax, az, run}` a cada 33 ms, `{t:'act', a}`.
 - Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv, u, inv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
   `u` = texto do botão Usar (🪵 Barricar/🔨 Consertar/🪵 Reforçar · 🔍 Revistar/🪚 Desmontar); `inv` = estoque do grupo.
-  `use`: barricada (se há tábuas) → móvel → aviso "precisa de tábuas" → carro.
+  `use`: barricada (se há tábuas) → móvel → rádio (pôr/pegar) → aviso "precisa de tábuas" → carro.
 - No menu: celular manda `{t:'act', a:'prev'|'next'}` para trocar a classe (o `main.js` manda para `lobby.pick` só na fase de menu);
   a tela manda `{t:'lobby', slot, total, pick}` (pick = texto da classe escolhida). `game.addPlayer(id, nome, vaga, classe)`.
 - Jogador do teclado tem id `'local'`. Bots de teste têm id `bot1`…`bot3` e usam o mesmo contrato (`games/survivor/bots.js`).
@@ -187,6 +189,11 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
 - **Barricadas (J4):** colisor com `only: 'zombie'` (motor: `resolve` ignora para outros tipos) e `door: true` (A* trata como porta)
   e `h: 1` (tiro e visão passam). `DoorsNear`/`HasBuilding` no registro de casas; `door.lock` = zumbi não abre a porta. Estado por porta
   (id = posição) em `barricades.js`; o desenho e o colisor saem/voltam com a casa. Zumbi em perseguição encostado bate (`ctx.bash`).
+- **Janelas (J5a):** `buildings.js` registra as janelas do térreo no protótipo (`pr.windows`: centro na parede, normal para fora, largura);
+  o gerador põe no mundo (`b.windows`, id = posição) e `WindowsNear`/`BuildingAt` respondem. A parede continua inteira: o zumbi não passa
+  pela colisão, ele pula (teleporta para dentro depois de `window.climb` s). A horda pergunta `ctx.entry(e, x, z, dt)` antes de andar
+  (perseguindo/investigando): alvo numa casa e janela utilizável mais perto que a porta → vai pela janela. Janela com móvel/escada na frente
+  (ponto de dentro bloqueado) não é usada. Vidro quebrado continua quebrado (buraco escuro desenhado por fora).
 - `window.__game` existe só no `npm run dev` (testes automáticos e depuração); a versão compilada não tem.
 - Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
   guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
@@ -206,6 +213,9 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j5a-base-janelas (J5a)** — janelas do térreo viram entradas: zumbi atrás de alguém lá dentro vai pela janela se for mais perto que a porta,
+  bate na barricada, quebra o vidro (4 de vida) e pula em 1,5 s; janela aceita barricada como a porta. Rádio: Usar num lugar livre dentro de uma
+  casa marca a base (📻 no placar; anel verde pulsando); Usar perto dele pega de volta. Replay atualizado (zumbis agora usam janelas).
 - **j4-barricadas (J4)** — por dentro, perto da porta: Barricar (2 🪵, 2,5 s), Consertar (1 🪵, +20), Reforçar (2 🪵, vida 40 → 80);
   martelo 12 m. Só segura zumbi (gente e tiro passam). Zumbi encostado bate (2 de dano a cada ~1,1 s); tábuas caem em estágios; barrinha de vida
   deitada sobre a porta; aviso "barricada sob ataque"; quebra com estrondo e tremor. `tasks.js` separou o "parado fazendo algo" do saque

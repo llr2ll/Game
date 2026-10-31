@@ -143,6 +143,17 @@ export const BALANCE = {
     reach: 1.8, // distância da porta para usar (de dentro da casa)
   },
 
+  // ---------------------------------------------------------------- janelas do térreo (entradas de zumbi)
+  // Zumbi atrás de alguém dentro de uma casa usa a janela se ela estiver mais perto que a porta: bate na barricada (se houver),
+  // quebra o vidro e pula para dentro. Janela aceita barricada como a porta (mesmos custos e vida de barricade).
+  window: {
+    glass: 4, // vida do vidro (com a pancada de zombies.bash, ~2 pancadas)
+    climb: 1.5, // segundos que o zumbi leva para pular para dentro (dá tempo de acertar)
+    reach: 1.4, // distância da janela, por dentro, para barricar
+    prefer: 1, // o zumbi só troca a porta pela janela se ela estiver pelo menos 1 m mais perto
+  },
+  radio: { reach: 1.2 }, // distância para pegar o rádio de volta (o rádio marca a casa-base)
+
   // ---------------------------------------------------------------- sensação ("juice"): só aparência, a não ser a pausa
   juice: {
     // tremor de tela: quanto a câmera balança (metros) em cada caso; scale 0 desliga todos. Só treme a tela de quem está perto (radius)

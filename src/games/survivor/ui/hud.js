@@ -19,7 +19,7 @@ export function CreateHud(game, climate) {
       t = 0.1
       $('#wave').textContent = `⏱ ${clock(game.st.time)} · 🧟 ${game.zombies()}`
       $('#score').textContent = `Pontos ${game.st.score}`
-      $('#inv').textContent = game.loot.text() // estoque do grupo (saque)
+      $('#inv').textContent = game.invText() // estoque do grupo (saque) + 📻 se a base está marcada
       if (climate) $('#clock').textContent = climate.label()
       $('#plist').innerHTML = [...game.players.values()].map((p) => {
         const inf = game.info(p)

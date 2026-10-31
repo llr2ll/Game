@@ -17,6 +17,7 @@ import { PLAYER_COLORS } from '../../../engine/render/splitscreen'
 import { CreateLoot } from '../loot'
 import { CreateTasks } from '../tasks'
 import { CreateBarricades } from '../barricades'
+import { CreateBase } from '../base'
 
 const MAX_PLAYERS = 4
 // números das regras: config/balance.js
@@ -48,7 +49,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const say = (t, s = 2.2) => { st.msg = t; st.msgT = s }
   const alive = () => [...players.values()].filter((p) => !p.dead)
 
-  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true), impact, bash: (e) => bars.bash(e) })
+  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true), impact, bash: (e) => bars.bash(e), entry: (e, x, z, dt) => bars.entry(e, x, z, dt) })
   const enemies = horde.list
 
   // dano num zumbi (todas as fontes: tiro, espada, magia, onda, pisão, atropelamento); p = quem leva o crédito
@@ -71,7 +72,8 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise, impact, night: hooks.night || (() => false) })
   const tasks = CreateTasks({ scene, noise, sfx }) // parado fazendo algo (revistar, desmontar, barricar)
   const loot = CreateLoot({ scene, fx, players, say, sfx, tasks }) // saque nas casas (Usar perto de um móvel)
-  const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact }) // barricadas nas portas (Usar perto da porta, por dentro)
+  const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact }) // barricadas em portas e janelas (Usar por dentro)
+  const base = CreateBase({ scene, say, sfx }) // rádio: a casa onde ele está é a base
 
   // slot = vaga do lobby: cor e ponto de largada · choice = classe escolhida (0 Atirador · 1 Samurai · 2 Mago · 3 Bardo; sem escolha = a da vaga)
   function addPlayer(id, name, slot, choice) {
@@ -111,7 +113,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     const p = players.get(id)
     if (!p || p.dead) return
     if (a === 'shove') return horde.shove(p)
-    if (a === 'use') { if (!p.vehicle && !p.held && (bars.use(p, true) || loot.use(p) || bars.use(p))) return; return (!p.held || p.vehicle) && vehicles.use(p) } // móvel ao alcance primeiro; agarrado não entra no carro
+    if (a === 'use') { if (!p.vehicle && !p.held && (bars.use(p, true) || loot.use(p) || base.use(p) || bars.use(p))) return; return (!p.held || p.vehicle) && vehicles.use(p) } // móvel ao alcance primeiro; agarrado não entra no carro
     if (a === 'b1' || a === 'b2' || a === 'b3') return abilities.skill(p, +a[1] - 1)
     if (a === 'swap') return abilities.skill(p, 0) // controles antigos
     if (a === 'reload') return p.cls.id === 'gunner' && abilities.skill(p, 1)
@@ -154,6 +156,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   function clearAll() {
     loot.clear()
     bars.clear()
+    base.clear()
     tasks.clear(players.values())
     horde.clear()
     abilities.clear()
@@ -222,6 +225,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     abilities.update(dt)
     loot.update(dt, list)
     bars.update(dt)
+    base.update(dt)
     tasks.update(list)
     fx.update(dt)
     gore.update(dt)
@@ -233,12 +237,14 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
         if (p.id === 'local') continue
         const inf = abilities.info(p)
         const car = p.vehicle ? 2 : !p.dead && vehicles.nearest(p) ? 1 : 0
-        net.send(p.id, { t: 'state', hp: Math.ceil(p.hp), max: p.max, cls: `${p.cls.icon} ${p.cls.name}`, w: inf.text, btn: inf.buttons.map((b) => [b.l, +b.cd.toFixed(2)]), car, dead: p.dead, st: Math.round(p.stamina), time: Math.floor(st.time), score: st.score, held: p.held ? 1 : 0, rv: p.dead && !st.over ? Math.ceil(p.reviveT) : 0, u: bars.label(p, true) || loot.label(p) || bars.label(p), inv: loot.text() })
+        net.send(p.id, { t: 'state', hp: Math.ceil(p.hp), max: p.max, cls: `${p.cls.icon} ${p.cls.name}`, w: inf.text, btn: inf.buttons.map((b) => [b.l, +b.cd.toFixed(2)]), car, dead: p.dead, st: Math.round(p.stamina), time: Math.floor(st.time), score: st.score, held: p.held ? 1 : 0, rv: p.dead && !st.over ? Math.ceil(p.reviveT) : 0, u: bars.label(p, true) || loot.label(p) || base.label(p) || bars.label(p), inv: invText() })
       }
     }
   }
 
-  return { players, enemies, vehicles, loot, bars, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p) }
+  // estoque do grupo + base marcada (placar e celular)
+  const invText = () => loot.text() + (base.at() ? '  📻' : '')
+  return { players, enemies, vehicles, loot, bars, base, invText, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p) }
 }
 
 export const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`

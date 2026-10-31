@@ -30,7 +30,8 @@ const rnd = (a, b) => a + Math.random() * (b - a)
 const sameLv = (a, b) => (a.lv || 0) === (b.lv || 0)
 
 // ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?),
-//        impact(x, z, tipo) (tremor/pausa), bash(e) (bate numa barricada encostada; true = bateu) }
+//        impact(x, z, tipo) (tremor/pausa), bash(e) (bate numa barricada encostada; true = bateu),
+//        entry(e, x, z, dt) (ir pela janela? null = normal · {x, z} = ande até aqui · {hold} = parado na janela) }
 export function CreateHorde(ctx) {
   const { scene, fx, gore } = ctx
   const list = []
@@ -281,6 +282,8 @@ export function CreateHorde(ctx) {
         break
       }
       case 'investigate': {
+        const via = ctx.entry && ctx.entry(e, e.goal.x, e.goal.z, dt) // barulho dentro de uma casa: talvez pela janela
+        if (via) { if (!via.hold) Navigate(e, via.x, via.z, 0, SPEED.investigate * slow, 0.3, dt, 4); if (e.stT > 20) { setState(e, 'wander'); e.goal = null } break }
         if (Navigate(e, e.goal.x, e.goal.z, 0, SPEED.investigate * slow, 1.2, dt, 4) < 1.4 || e.stT > 20) { setState(e, 'wander'); e.goal = null; e.waitT = rnd(2, 4) }
         break
       }
@@ -292,6 +295,8 @@ export function CreateHorde(ctx) {
         const knows = e.seenT < 0.6
         const gx = knows ? p.x : e.tx, gz = knows ? p.z : e.tz
         const reach = REACH + (p.pad || 0) // pad: quem está num veículo é alcançado pela lataria
+        const via = ctx.entry && ctx.entry(e, gx, gz, dt) // alvo dentro de uma casa: talvez pela janela
+        if (via) { if (!via.hold) Navigate(e, via.x, via.z, 0, e.speed * slow, 0.3, dt, e.fast ? 7 : 5); break }
         const d = Navigate(e, gx, gz, knows ? p.gy ?? 0 : 0, e.speed * slow, reach * 0.85, dt, e.fast ? 7 : 5)
         if (!knows && d < 1.2) { e.target = null; setState(e, 'wander'); e.goal = null; e.waitT = rnd(1, 3); break }
         // bote: no alcance, mesmo andar; pular ou a investida do samurai escapam

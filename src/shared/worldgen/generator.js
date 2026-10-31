@@ -281,6 +281,8 @@ export function GenerateChunk(cx, cz) {
     bList.push({
       x: b.x, z: b.z, y, ry: b.ry, cs, sn, pr, x0: b.x - b.hw, x1: b.x + b.hw, z0: b.z - b.hd, z1: b.z + b.hd,
       ix0: b.x - iw, ix1: b.x + iw, iz0: b.z - id, iz1: b.z + id, meshes, mode: 0, door: { pivot, leaf, ang: 0, col: dcol, x: ddx, z: ddz },
+      // janelas do térreo no mundo (entradas de zumbi); id = posição
+      windows: pr.windows.map((o) => { const [wx, wz] = toW(o.x, o.z); return { x: wx, z: wz, nx: o.nx * cs + o.nz * sn, nz: -o.nx * sn + o.nz * cs, w: o.w, y: y + o.y, id: `${wx.toFixed(1)},${wz.toFixed(1)}` } }),
       // móveis no mundo (saque); id estável: a mesma casa gera o mesmo id quando o chunk volta
       spots: pr.spots.map((s) => { const [sx, sz] = toW(s.x, s.z), [fx, fz] = toW(s.fx, s.fz); return { x: sx, z: sz, fx, fz, y: y + s.y, lv: s.k, key: s.key, room: s.room, r: s.r, id: `${sx.toFixed(1)},${sz.toFixed(1)},${s.k}` } }),
     })
