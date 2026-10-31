@@ -40,7 +40,7 @@ export function UpdateDoors(dt, players, enemies) {
     const d = b.door
     let near = false
     for (const p of players) if (!p.dead && (p.x - d.x) ** 2 + (p.z - d.z) ** 2 < OPEN_R * OPEN_R) { near = true; break }
-    if (!near) for (const e of enemies) if (e.dying <= 0 && (e.x - d.x) ** 2 + (e.z - d.z) ** 2 < OPEN_R * OPEN_R) { near = true; break }
+    if (!near && !d.lock) for (const e of enemies) if (e.dying <= 0 && (e.x - d.x) ** 2 + (e.z - d.z) ** 2 < OPEN_R * OPEN_R) { near = true; break }
     const goal = near ? OPEN_ANG : 0
     if (d.ang === goal) continue
     if (goal && !d.ang) events.emit('door-open', { x: d.x, z: d.z }) // começou a abrir (o jogo toca trinco + rangido)
@@ -50,6 +50,20 @@ export function UpdateDoors(dt, players, enemies) {
     d.pivot.updateMatrix()
     d.col.off = d.ang > 0.35
   }
+}
+
+// casa ainda carregada? (o objeto some quando o chunk sai; volta outro quando o chunk volta)
+export const HasBuilding = (b) => set.has(b)
+// portas das casas carregadas a menos de r de (x, z): { id (posição), x, z, y, ry, ox, oz (para fora), w (largura), d (porta), b (casa) }
+// d.lock = true: zumbi não abre (gente abre)
+export function DoorsNear(x, z, r) {
+  const out = []
+  for (const b of set) {
+    const d = b.door
+    if (Math.hypot(d.x - x, d.z - z) >= r) continue
+    out.push({ id: `${d.x.toFixed(1)},${d.z.toFixed(1)}`, x: d.x, z: d.z, y: b.y, ry: b.ry, ox: b.sn, oz: b.cs, w: 2 * Math.max(d.col.hw, d.col.hd), d, b })
+  }
+  return out
 }
 
 // móveis das casas carregadas a menos de r de (x, z), no andar lv (cada um: { x, z, y, lv, key, room, r, id })

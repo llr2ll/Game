@@ -56,6 +56,9 @@ Os carros da estrada são dirigíveis por qualquer um dos 4 jogadores (três já
 ## Saque nas casas
 Móveis com gaveta (cômoda, baú, guarda-roupa, estante, fogão, balcão, caixotes, barril…) brilham em **amarelo** quando alguém chega perto: **Usar** (E / botão do celular) revista — fique parado 1,5 s (faz um barulho pequeno). Pode sair tábuas, remédio, munição (vai direto para o Atirador), gasolina ou um achado raro; metade dos móveis está vazia. Depois de revistado, o móvel brilha em **laranja**: Usar de novo desmonta (3 s, barulho de martelo que atrai zumbis) e dá 1–2 tábuas. Mesa, cama e sofá só desmontam. O que foi revistado não volta. O estoque do grupo aparece no topo da tela e no celular. Os itens ainda não têm uso: tábuas para barricadas, remédio, gasolina e achados chegam nos próximos PRs. Números em `balance.js`, seção `loot`.
 
+## Barricadas
+De **dentro** de uma casa, perto da porta, **Usar** prega tábuas do estoque do grupo: **Barricar** (2 🪵), depois **Consertar** (1 🪵) quando apanhar e **Reforçar** (2 🪵, vida em dobro). O martelo faz barulho. A barricada **só segura zumbis**: gente e tiro passam pela fresta. Zumbi encostado bate até quebrar; as tábuas caem e uma barrinha sobre a porta mostra a vida (verde → amarelo → vermelho). Números em `balance.js`, seção `barricade` (e `zombies.bash`).
+
 ## Sensação ("juice")
 Anel fraco no chão mostra até onde o barulho chegou (tiro, música, explosão: os zumbis ouvem até ali). Zumbi pisca branco ao levar golpe. Explosão, batida, atropelamento, espingarda, 3º golpe da katana e pisão tremem a tela (só as telas perto). Golpes fortes dão uma pausa de 40 ms. À noite o tiro clareia o chão. Tudo ajustável (ou desligável) em `src/games/survivor/config/balance.js`, seção `juice`.
 

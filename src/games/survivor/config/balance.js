@@ -98,6 +98,7 @@ export const BALANCE = {
     normal: { hp: [7, 9.5], speed: [1.6, 2.15], score: 10 }, // zumbi normal: vida (mín–máx) · velocidade perseguindo · pontos
     runner: { hp: [4.5, 5.5], speed: [3.0, 3.5], score: 15, chance: 0.08, rampSeconds: 1200, chanceMax: 0.3 }, // corredor; chance de nascer corredor sobe 100% a cada 1200 s (≈ +5%/min) até 30%
     attack: { reach: 0.95, hold: 0.68, lunge: 0.42, scratch: 3, bite: [6, 9], biteEvery: [1.1, 1.6], firstBite: [0.7, 1.0], car: 5 }, // alcance do bote · distância segurando · duração do bote · arranhão · mordida (mín–máx) · intervalo · 1ª mordida · dano batendo no carro
+    bash: { every: [0.9, 1.3], damage: 2 }, // zumbi encostado numa barricada: uma pancada a cada 0,9–1,3 s · dano por pancada
     downDamage: 1.3, // zumbi caído leva mais dano (x1,3)
     iceSlow: 0.4, // velocidade do zumbi gelado (fração)
     corpseTime: 14, // segundos até o corpo sumir
@@ -129,6 +130,17 @@ export const BALANCE = {
     },
     planks: [1, 2], // tábuas por achado (mín–máx)
     ammo: { carbine: 20, shotgun: 6 }, // munição achada vai direto para cada Atirador do grupo (até o limite dos suprimentos); sem Atirador, fica guardada
+  },
+
+  // ---------------------------------------------------------------- barricadas (porta das casas, por dentro)
+  // Só seguram zumbis: gente e tiro passam pela fresta. Tábuas saem do estoque do grupo.
+  barricade: {
+    hp: 40, // vida da barricada (reforçada: o dobro). Um zumbi sozinho quebra em ~25 s
+    build: { planks: 2, time: 2.5 }, // pregar: tábuas · segundos parado
+    repair: { planks: 1, time: 1.5, hp: 20 }, // consertar: tábuas · segundos · vida devolvida
+    reinforce: { planks: 2, time: 2.5 }, // reforçar (com a vida cheia): tábuas · segundos; a vida máxima dobra
+    noise: 12, // barulho do martelo (a cada segundo)
+    reach: 1.8, // distância da porta para usar (de dentro da casa)
   },
 
   // ---------------------------------------------------------------- sensação ("juice"): só aparência, a não ser a pausa

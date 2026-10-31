@@ -43,7 +43,7 @@ function forNear(x, z, r, fn) {
 export function resolve(obj, r, _colliders, feet = 0) {
   const lv = obj.lv || 0
   forNear(obj.x, obj.z, r, (c) => {
-    if (c.off || (c.lv !== undefined && c.lv !== lv) || (c.veh && c.veh === obj.veh)) return
+    if (c.off || (c.lv !== undefined && c.lv !== lv) || (c.veh && c.veh === obj.veh) || (c.only && c.only !== obj.type)) return // only: só vale para esse tipo (ex.: barricada só segura zumbi)
     if (c.h !== undefined && feet >= c.h - 0.02) return
     const nx = Math.max(c.x - c.hw, Math.min(obj.x, c.x + c.hw))
     const nz = Math.max(c.z - c.hd, Math.min(obj.z, c.z + c.hd))

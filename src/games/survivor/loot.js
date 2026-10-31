@@ -27,15 +27,12 @@ function pick(weights) {
 }
 const MARK_GEO = new THREE.OctahedronGeometry(0.22, 0).scale(1, 1.4, 1) // losango em pé, visível de cima
 const MARK = { search: new THREE.MeshBasicMaterial({ color: 0xffc81e, toneMapped: false }), dismantle: new THREE.MeshBasicMaterial({ color: 0xd9894a, toneMapped: false }) } // amarelo: revistar · laranja: desmontar
-const PROG_GEO = new THREE.RingGeometry(0.82, 1, 32).rotateX(-Math.PI / 2)
-const PROG_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, depthTest: false }) // aparece até atrás de móveis
 
-// ctx: { scene, fx, players (Map), noise(x, z, r), say(texto, s), sfx(nome, opções) }
-export function CreateLoot({ scene, fx, players, noise, say, sfx }) {
+// ctx: { scene, fx, players (Map), say(texto, s), sfx(nome, opções), tasks (tasks.js: parado fazendo algo) }
+export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
   const done = new Map() // id do móvel -> 1 revistado · 2 desmontado
   const inv = { tabuas: 0, remedio: 0, municao: 0, gasolina: 0, raro: 0 }
   const marks = Array.from({ length: 12 }, () => { const m = new THREE.Mesh(MARK_GEO, MARK.search); m.visible = false; scene.add(m); return m })
-  const progs = new Map() // id do jogador -> anel de progresso
   let t = 0
 
   // o que dá para fazer neste móvel agora: 'search', 'dismantle' ou null
@@ -93,26 +90,14 @@ export function CreateLoot({ scene, fx, players, noise, say, sfx }) {
       if (p.task) return true
       const s = target(p)
       if (!s) return false
-      const a = actionOf(s)
-      p.task = { s, a, t: 0, need: a === 'search' ? L.search.time : L.dismantle.time, noiseT: 0, x: p.x, z: p.z }
-      sfx(a === 'search' ? 'swap' : 'bang', { x: s.x, z: s.z })
+      const a = actionOf(s), search = a === 'search'
+      tasks.start(p, { a, icon: search ? '🔍' : '🪚', need: search ? L.search.time : L.dismantle.time, at: s, noise: search ? L.search.noise : L.dismantle.noise, beat: search ? null : 'bang', done: (pp) => finish(pp, { s, a }) })
+      sfx(search ? 'swap' : 'bang', { x: s.x, z: s.z })
       return true
     },
     // texto do botão Usar (celular) quando há móvel ao alcance
     label(p) { const s = !p.dead && !p.vehicle && target(p); return s ? (actionOf(s) === 'search' ? '🔍 Revistar' : '🪚 Desmontar') : '' },
-    // por jogador, a cada quadro: progresso; mexer, atacar, ser agarrado, cair ou entrar no carro cancela
-    tick(p, dt) {
-      const k = p.task
-      if (!k) return
-      if (p.dead || p.vehicle || p.held || p.firing || Math.hypot(p.x - k.x, p.z - k.z) > 0.6) { p.task = null; return }
-      if ((k.noiseT -= dt) <= 0) {
-        k.noiseT = 1
-        noise(k.s.x, k.s.z, k.a === 'search' ? L.search.noise : L.dismantle.noise)
-        if (k.a === 'dismantle' && k.t > 0) sfx('bang', { x: k.s.x, z: k.s.z })
-      }
-      if ((k.t += dt) >= k.need) { p.task = null; finish(p, k) }
-    },
-    // brilho nos móveis perto de alguém + anel de progresso de quem está revistando/desmontando
+    // brilho nos móveis perto de alguém
     update(dt, list) {
       t += dt
       let n = 0
@@ -132,24 +117,13 @@ export function CreateLoot({ scene, fx, players, noise, say, sfx }) {
         }
       }
       for (let i = n; i < marks.length; i++) marks[i].visible = false
-      for (const p of list) {
-        let r = progs.get(p.id)
-        if (!p.task) { if (r) r.visible = false; continue }
-        if (!r) { r = new THREE.Mesh(PROG_GEO, PROG_MAT); r.renderOrder = 3; scene.add(r); progs.set(p.id, r) }
-        r.visible = true
-        r.scale.setScalar(0.35 + 0.6 * (p.task.t / p.task.need)) // o anel cresce até completar
-        r.position.set(p.x, (p.y || 0) - (p.jy || 0) + 0.13, p.z)
-      }
     },
     // estoque do grupo, curto (placar e celular)
     text() { return Object.entries(ITEMS).filter(([k]) => inv[k] || k === 'tabuas' || k === 'remedio').map(([k, [icon]]) => `${icon} ${inv[k]}`).join('  ') },
     clear() {
       done.clear()
       for (const k in inv) inv[k] = 0
-      for (const r of progs.values()) scene.remove(r)
-      progs.clear()
       for (const m of marks) m.visible = false
-      for (const p of players.values()) p.task = null
     },
   }
 }

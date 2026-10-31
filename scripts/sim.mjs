@@ -58,7 +58,18 @@ export async function SimFingerprint(vite, frames = 3000) {
       // saque: no quadro 600 o 4º jogador vai até um móvel, revista e depois desmonta (fica parado até o quadro 760)
       const looter = list[3]
       if (looter && f === 600) { const sp = reg.SpotsNear(0, 0, 0, 60).find((x) => /^(dresser|wardrobe|chest|shelf|desk|stove|counter)/.test(x.key)); if (sp) Object.assign(looter, { x: sp.fx, z: sp.fz, lv: 0, vx: 0, vz: 0 }) }
+      // barricada: no quadro 1700 (noite) o mesmo jogador entra na casa mais perto, barrica e reforça a porta (parado até 1900)
+      if (looter && f === 1700) {
+        game.loot.inv.tabuas += 4
+        const d = reg.DoorsNear(0, 0, 60).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]
+        if (d) Object.assign(looter, { x: d.x - d.ox * 1.2, z: d.z - d.oz * 1.2, lv: 0, vx: 0, vz: 0 })
+      }
       list.forEach((p, i) => {
+        if (p === looter && f >= 1700 && f < 1900) {
+          game.setInput(p.id, { mx: 0, mz: 0, ax: 0, az: 0, run: 0, fire: 0 })
+          if (f === 1701 || f === 1790) game.act(p.id, 'use')
+          return
+        }
         if (p === looter && f >= 600 && f < 760) {
           game.setInput(p.id, { mx: 0, mz: 0, ax: 0, az: 0, run: 0, fire: 0 })
           if (f === 601 || f === 660) game.act(p.id, 'use')
@@ -93,9 +104,10 @@ export async function SimFingerprint(vite, frames = 3000) {
       enemies: game.enemies.map((e) => [r(e.x), r(e.z), r(e.hp), e.state, e.fast]),
       cars: game.vehicles.list.length,
       loot: game.loot.text(),
+      bars: game.bars.list(),
     }
     off()
-    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot}` }
+    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'}` }
   } finally {
     Math.random = realRandom
     Error.stackTraceLimit = realLimit

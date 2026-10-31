@@ -30,7 +30,7 @@ const rnd = (a, b) => a + Math.random() * (b - a)
 const sameLv = (a, b) => (a.lv || 0) === (b.lv || 0)
 
 // ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?),
-//        impact(x, z, tipo) (tremor/pausa) }
+//        impact(x, z, tipo) (tremor/pausa), bash(e) (bate numa barricada encostada; true = bateu) }
 export function CreateHorde(ctx) {
   const { scene, fx, gore } = ctx
   const list = []
@@ -354,6 +354,8 @@ export function CreateHorde(ctx) {
     e.lx = e.x; e.lz = e.z
     e.fy = fl ? fl.y : GroundAt(e.x, e.z)
     e.lv = fl ? fl.lv : 0
+    // encostado numa barricada (perseguindo ou indo ver um barulho): bate nela
+    if ((e.state === 'chase' || e.state === 'investigate') && ctx.bash && (e.bashT = (e.bashT || 0) - dt) <= 0) e.bashT = ctx.bash(e) ? rnd(Z.bash.every[0], Z.bash.every[1]) : 0.25
 
     const moved = Math.hypot(e.x - ox, e.z - oz) / Math.max(dt, 1e-4)
     e.vel += (Math.min(moved, 5) - e.vel) * (1 - Math.exp(-10 * dt))

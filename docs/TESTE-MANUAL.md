@@ -26,6 +26,7 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | 13 | **Esc** durante a partida | Volta ao menu sem travar | ☐ |
 | 14 | **Sensação**: atire, jogue granada, dê o 3º golpe da katana | Anel fraco no chão até onde o som foi · zumbi pisca branco · a tela treme na explosão · o 3º golpe dá um "tranco" curtinho · à noite o tiro clareia o chão | ☐ |
 | 15 | **Saque**: entre numa casa, chegue perto de uma cômoda e aperte E (ou o botão do celular) | Losangos amarelos nos móveis perto · o botão do celular vira "🔍 Revistar" · anel cresce sob você · mensagem do que achou · estoque no topo muda. Use de novo: "🪚 Desmontar", martelo, +tábuas. Andar no meio cancela | ☐ |
+| 16 | **Barricada**: junte 2 🪵 (desmonte móveis), fique dentro da casa perto da porta e aperte E | O botão vira "🪵 Barricar (2)" · martelo · tábuas na porta + barrinha verde em cima. Saia e entre pela porta: você passa. Atraia zumbis: eles param na porta e batem; a barrinha cai, aparece "⚠ Barricada sob ataque". Conserte (1 🪵) e reforce (2 🪵) | ☐ |
 
 Para testar outra classe pelo teclado: Esc → no menu, aperte A ou D → Enter.
 
