@@ -112,6 +112,25 @@ export const BALANCE = {
     vehicle: { carDamage: 0.9, playerDamage: 0.35 }, // dentro do carro: o carro leva 90% do dano e o jogador só 35%
   },
 
+  // ---------------------------------------------------------------- saque nas casas
+  // Móveis com gaveta (cômoda, baú, guarda-roupa, estante, fogão, balcão, caixotes…) podem ser revistados uma vez e depois desmontados.
+  // Mesa, cama e sofá só podem ser desmontados. O que foi revistado/desmontado não volta.
+  loot: {
+    glow: 4, // móveis com algo a fazer brilham quando alguém chega a até 4 m (no mesmo andar)
+    reach: 1.2, // distância para conseguir usar o móvel
+    search: { time: 1.5, noise: 5 }, // revistar: segundos parado · barulho (no começo e a cada segundo)
+    dismantle: { time: 3, noise: 12, planks: [1, 2] }, // desmontar: segundos parado · barulho de martelo (a cada segundo) · tábuas (mín–máx)
+    chance: 0.5, // chance de um móvel revistado ter alguma coisa
+    rooms: { // o que sai, conforme o cômodo (pesos: maior = mais comum; 0 = nunca)
+      terreo: { tabuas: 35, remedio: 25, municao: 25, gasolina: 10, raro: 5 }, // cozinha e sala
+      quarto: { tabuas: 15, remedio: 35, municao: 35, gasolina: 0, raro: 15 }, // andar de cima
+      sotao: { tabuas: 40, remedio: 5, municao: 10, gasolina: 20, raro: 25 }, // sótão das casas de 3 andares
+      loja: { tabuas: 30, remedio: 30, municao: 30, gasolina: 5, raro: 5 }, // lojas
+    },
+    planks: [1, 2], // tábuas por achado (mín–máx)
+    ammo: { carbine: 20, shotgun: 6 }, // munição achada vai direto para cada Atirador do grupo (até o limite dos suprimentos); sem Atirador, fica guardada
+  },
+
   // ---------------------------------------------------------------- sensação ("juice"): só aparência, a não ser a pausa
   juice: {
     // tremor de tela: quanto a câmera balança (metros) em cada caso; scale 0 desliga todos. Só treme a tela de quem está perto (radius)

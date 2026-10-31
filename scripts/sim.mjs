@@ -55,7 +55,15 @@ export async function SimFingerprint(vite, frames = 3000) {
       now += dt * 1000
       if (f === frames / 2) night = true
       const list = [...game.players.values()]
+      // saque: no quadro 600 o 4º jogador vai até um móvel, revista e depois desmonta (fica parado até o quadro 760)
+      const looter = list[3]
+      if (looter && f === 600) { const sp = reg.SpotsNear(0, 0, 0, 60).find((x) => /^(dresser|wardrobe|chest|shelf|desk|stove|counter)/.test(x.key)); if (sp) Object.assign(looter, { x: sp.fx, z: sp.fz, lv: 0, vx: 0, vz: 0 }) }
       list.forEach((p, i) => {
+        if (p === looter && f >= 600 && f < 760) {
+          game.setInput(p.id, { mx: 0, mz: 0, ax: 0, az: 0, run: 0, fire: 0 })
+          if (f === 601 || f === 660) game.act(p.id, 'use')
+          return
+        }
         const [mx, mz] = DIRS[(Math.floor(f / 75) + i) % DIRS.length]
         // mira no zumbi vivo mais perto (até 14 m) e ataca
         let best = null, bd = 196
@@ -84,9 +92,10 @@ export async function SimFingerprint(vite, frames = 3000) {
       players: [...game.players.values()].map((p) => [p.id, r(p.x), r(p.z), r(p.hp), r(p.stamina), r(p.mana), p.kills, p.dead, p.weapon, JSON.stringify(p.ammo), !!p.vehicle]),
       enemies: game.enemies.map((e) => [r(e.x), r(e.z), r(e.hp), e.state, e.fast]),
       cars: game.vehicles.list.length,
+      loot: game.loot.text(),
     }
     off()
-    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos` }
+    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot}` }
   } finally {
     Math.random = realRandom
     Error.stackTraceLimit = realLimit

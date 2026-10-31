@@ -52,6 +52,16 @@ export function UpdateDoors(dt, players, enemies) {
   }
 }
 
+// móveis das casas carregadas a menos de r de (x, z), no andar lv (cada um: { x, z, y, lv, key, room, r, id })
+export function SpotsNear(x, z, lv, r) {
+  const out = []
+  for (const b of set) {
+    if (x < b.x0 - r || x > b.x1 + r || z < b.z0 - r || z > b.z1 + r) continue
+    for (const s of b.spots) if (s.lv === lv && Math.hypot(s.x - x, s.z - z) < r) out.push(s)
+  }
+  return out
+}
+
 export function PointInBuilding(x, z, m = 0) {
   for (const b of set) if (x > b.x0 - m && x < b.x1 + m && z > b.z0 - m && z < b.z1 + m) return true
   return false

@@ -54,8 +54,11 @@ function onState(m) {
     el.style.setProperty('--cd', b[1])
   })
   const use = $('#use')
-  use.className = m.car === 2 ? 'in' : m.car === 1 ? 'near' : ''
-  use.textContent = m.car === 2 ? '🚗 Sair' : '🚗 Entrar'
+  // botão Usar: sair do carro · ação que o jogo mandar (u, ex.: revistar um móvel) · entrar no carro
+  const label = m.car === 2 ? '🚗 Sair' : m.u || (m.car === 1 ? '🚗 Entrar' : '')
+  use.className = m.car === 2 ? 'in' : label ? 'near' : ''
+  use.textContent = label
+  $('#inv').textContent = m.inv || ''
   $('#time').textContent = `⏱ ${String(Math.floor(m.time / 60)).padStart(2, '0')}:${String(m.time % 60).padStart(2, '0')}`
   $('#shove').classList.toggle('alert', !!m.held)
   $('#st i').style.width = `${m.st}%`

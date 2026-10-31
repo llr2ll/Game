@@ -341,6 +341,7 @@ function build(id, s, vr, vi) {
   const shell = [], cutw = [], inside = [], ext = []
   for (let k = 0; k < F; k++) { shell.push([]); cutw.push([]); inside.push([]); ext.push([]) }
   const cols = []
+  const spots = [] // móveis (para saque): { x, z (centro), fx, fz (frente), y, k (andar), key, room, r } em coordenadas da casa
   const top = (k) => (k === F - 1 ? H : (k + 1) * FLOOR_H)
   const trim = stone ? 0xfff4dc : vr.trim
   const beam = stone ? tint(vr.wall, 1.12) : city ? vr.trim : WOOD_D
@@ -628,6 +629,8 @@ function build(id, s, vr, vi) {
         busy.push({ x0: x - hw - gap, x1: x + hw + gap, z0: z - hd - gap, z1: z + hd + gap })
         const a = (rot * Math.PI) / 2, c = Math.round(Math.cos(a)), sn = Math.round(Math.sin(a))
         list.push(assembly(f.key, f.parts).rotateY(a).translate(x, y0, z))
+        const fr = f.fd / 2 + 0.3 // a frente do móvel é +z antes de girar
+        spots.push({ x, z, fx: x + Math.sin(a) * fr, fz: z + Math.cos(a) * fr, y: y0, k, key: f.key, room: k === 0 ? (shop ? 'loja' : 'terreo') : k === 2 ? 'sotao' : 'quarto', r: Math.max(f.fw, f.fd) / 2 })
         for (const q of f.cols) cols.push({ x: x + q.x * c + q.z * sn, z: z - q.x * sn + q.z * c, hw: sw ? q.hd : q.hw, hd: sw ? q.hw : q.hd, h: q.h, lv: k })
         return [x, z]
       }
@@ -685,7 +688,7 @@ function build(id, s, vr, vi) {
   for (let k = 0; k < F; k++) cuts.push(merge([...common, ...shell.slice(0, k).flat(), ...ext.slice(0, k + 1).flat(), ...inside.slice(0, k + 1).flat(), ...cutw[k], ...(k === 0 ? doorStub : [])]))
   return {
     closed, cuts, door: doorLeaf(arch, vr.door), hinge: { x: dl + 0.04, z: zf }, doorCol: { x: dx, z: zf, hw: DOOR_W / 2, hd: T / 2 - 0.04 },
-    cols, w, d, doorX: dx, floors: F, ix, iz, ramps, top: H + rise + 0.6,
+    cols, spots, w, d, doorX: dx, floors: F, ix, iz, ramps, top: H + rise + 0.6,
   }
 }
 // Pré-geração espalhada: PrewarmBuildings só enfileira; PrewarmStep (a cada quadro) gera um protótipo pendente.

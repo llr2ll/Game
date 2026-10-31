@@ -122,6 +122,7 @@ export async function LoadGame() {
   })
   game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < BALANCE.day.nightTo || climate.time > BALANCE.day.nightFrom, loaded: chunks.loaded, shake: split.shake })
   events.on('vehicle-spot', (p) => game.vehicles.register(p)) // vaga na estrada → carro dirigível
+  if (import.meta.env.DEV) window.__game = game // só no npm run dev: para testes automáticos e depuração
   hud = CreateHud(game, climate)
   bots = CreateBots(game, BOTS)
   BindKeyboard(game, KEYS)

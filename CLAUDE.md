@@ -32,7 +32,7 @@ Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesm
   3. **Caches:** gera um trecho de novo com os limites dos caches encolhidos (x0, x0,004, x0,02), esquecendo antes de cada chunk;
      tem de dar igual. Pega cache que guarda estado ou caches ligados esquecidos separados (testado: acusa o erro).
   4. **Jogo (replay):** `scripts/sim.mjs` joga 100 s com 4 jogadores (uma classe cada) com sorteio e relógio fixos e compara o hash com
-     `scripts/sim-fingerprint.txt`. **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
+     `scripts/sim-fingerprint.txt` (no quadro 600 o 4º jogador revista e desmonta um móvel: cobre o saque). **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
      e dizer isso na descrição. Detalhes que importam: roda em processo novo; só sorteios feitos por código de `src/` entram na sequência fixa
      (o Vite e o Three.js também sorteiam, e isso mudaria com a ordem dos arquivos). `SIM_TRACE=arquivo node scripts/sim.mjs` grava o rastro
      quadro a quadro para achar onde dois replays se separam.
@@ -79,6 +79,7 @@ src/games/survivor/       este jogo
   config/weapons.js       nomes e ordem das armas (números vêm do balance.js)
   rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, suprimentos, fim de jogo
   abilities/classes.js    as 4 classes e suas habilidades
+  loot.js                 saque (J3): revistar/desmontar móveis, estoque do grupo, marcadores, anel de progresso
   bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
   enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
   ui/hud.js               placar da partida
@@ -115,7 +116,8 @@ Teclado e celular usam exatamente o mesmo formato. Não mude sem pedir.
 - `game.setInput(id, { mx, mz, ax, az, run, fire })` — mover (-1..1), mirar (-1..1; mirar inclinado = ataca), correr 0/1, `fire` só no mouse.
 - `game.act(id, ação)` — `b1` `b2` `b3` (botões da classe) · `shove` · `use` (carro) · `jump` · `reload` · `swap` · `carbine` `shotgun` `pistol`.
 - Celular → relay: `{t:'join', code, name}`, `{t:'in', mx, mz, ax, az, run}` a cada 33 ms, `{t:'act', a}`.
-- Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
+- Tela → celular: `{t:'state', hp, max, cls, w, btn, car, dead, st, time, score, held, rv, u, inv}` a cada 0,15 s; `hit`, `lobby`, `kick`, `closed`.
+  `u` = texto do botão Usar quando há móvel ao alcance (🔍 Revistar / 🪚 Desmontar); `inv` = estoque do grupo. `use`: móvel ao alcance primeiro, senão carro.
 - No menu: celular manda `{t:'act', a:'prev'|'next'}` para trocar a classe (o `main.js` manda para `lobby.pick` só na fase de menu);
   a tela manda `{t:'lobby', slot, total, pick}` (pick = texto da classe escolhida). `game.addPlayer(id, nome, vaga, classe)`.
 - Jogador do teclado tem id `'local'`. Bots de teste têm id `bot1`…`bot3` e usam o mesmo contrato (`games/survivor/bots.js`).
@@ -176,6 +178,10 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
 - Velocidades: andar 4,4 m/s, correr 7,6, mirando 3,1 (`player-movement.js`); sedã 23 m/s, picape 20, jipe 19 (`vehicles/models.js`).
 - Raio do barulho que atrai zumbis: tiro 30 m (pistola 22), granada 38, música do Bardo 18, onda 12, dardo 9, katana 7,
   carro andando 18, correr 8, andar 3. A noite muda visão (16 → 9 m) e quantidade (×1,3). Chuva e neblina não afetam os zumbis.
+- **Saque (J3):** `buildings.js` registra cada móvel no protótipo da casa (`pr.spots`: centro, frente, andar, tipo, cômodo); o gerador converte
+  para o mundo (`b.spots`, id = posição + andar, estável ao recarregar) e `SpotsNear(x, z, andar, r)` (registro de casas) devolve os próximos.
+  O que foi revistado/desmontado fica em `loot.js` (Map por id) até `game.clear()`. Desmontar não some com o móvel (ele faz parte da malha da casa).
+- `window.__game` existe só no `npm run dev` (testes automáticos e depuração); a versão compilada não tem.
 - Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
   guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
   Os móveis são fundidos numa malha só por casa: para saque, o gerador terá de devolver a posição de cada móvel.
@@ -194,6 +200,9 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j3-saque (J3)** — móveis viram pontos de busca: Usar revista (1,5 s parado, barulho 5 m, 50% de achar) e depois desmonta (3 s, martelo 12 m,
+  1–2 tábuas); mesa/cama/sofá só desmontam. 5 itens no estoque do grupo (munição vai direto para os Atiradores); marcadores amarelo/laranja a 4 m;
+  anel de progresso; estoque no placar e no celular; botão Usar do celular mostra a ação. Números em `balance.js · loot`. Itens ainda sem uso (J4+).
 - **j2-juice (J2)** — sensação: anel de barulho (habilidades a partir de 7 m), zumbi pisca branco ao levar golpe (`rig.flash`),
   tremor de tela por distância (explosão, batida, atropelamento, espingarda, 3º golpe, pisão), pausa de 40 ms (3º golpe, pisão, atropelamento),
   clarão do tiro no chão à noite. Tudo em `balance.js · juice`. Um aviso só: `impact(x, z, tipo)` (habilidades, horda e carros → regras).
