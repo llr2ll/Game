@@ -215,8 +215,10 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
   `game.hurt(p, dano)` fica exposto para testes (replay).
 - **Níveis (J7a):** o nível é `p.level` — **`p.lv` é o andar** (0 = térreo), não confundir. XP em `p.xp`, melhorias em `p.mods` (Set), cartas em `p.cards`,
   escolhas pendentes em `p.picks`, fôlego do Pulmão em `p.move`. Cada efeito fica onde a coisa acontece (`has(p, 'id')` de `levels.js`).
-  Só as 8 gerais existem (J7a); as 16 de classe e as 4 combinações são o J7b (`cls` na lista de `config/upgrades.js`).
-  Prova feita: com os níveis desligados (`need` enorme), o replay deu igual ao do J6.
+  São 28 cartas: 8 gerais, 16 de classe (`cls`) e 4 combinações (`cls` + `with`: só sorteia se a outra classe estiver no grupo).
+  Efeitos das de classe em `abilities/classes.js` (`haste` = Muiñeira; `e.waveAt` = Fogo na roda; `p.dash2` = Investida dupla)
+  e em `enemies/zombies.js` (`e.freezeT` = Gelo profundo, parado e sem atacar; corrida mais quieta = Passo de gato).
+  Prova feita (J7a e J7b): com os níveis desligados (`need` enorme), o replay deu igual ao do PR anterior.
 - `window.__game` existe só no `npm run dev` (testes automáticos e depuração); a versão compilada não tem.
 - Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
   guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
@@ -224,7 +226,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
 
 ## Plano da sessão de fundação (30/10/2026)
 0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR #5) · F3 (PR aberto).
-4. Vertical slice (seção 10 do GAME-DESIGN), um PR por vez: J1 · J2 · J3 · J4 · J5a · J5b · J6 · J7a (PRs abertos, aguardando merge em ordem) · próximo: J7b (melhorias das classes e combinações).
+4. Vertical slice (seção 10 do GAME-DESIGN), um PR por vez: J1 · J2 · J3 · J4 · J5a · J5b · J6 · J7a · J7b (PRs abertos, aguardando merge em ordem) · próximo: J8 (seção 10 do GAME-DESIGN).
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -237,6 +239,10 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j7b-classes (J7b)** — 16 melhorias de classe (4 cada) e 4 combinações no sorteio das cartas. Atirador: Silenciador, Bolsos fundos, Bala que atravessa,
+  Granada de pescador. Samurai: Corte limpo, Investida dupla, Passo de gato, Redemoinho de aço. Mago: Dardo em cadeia, Chuva de pedras, Gelo profundo,
+  Queimada. Bardo: Muiñeira, Coro, Onda forte, Isca. Combinações (= o J13 do plano, antecipado com OK do dono): Estilhaçar, Ritmo de guerra, Fogo na roda, Derrubar e cortar. Números em
+  `balance.js · upgrades`. Placar mostra a recarga certa em segundos (`info().buttons[].s`). Replay atualizado de propósito (mais cartas no sorteio).
 - **j7a-niveis (J7a)** — XP por abate (1; corredor 2), revistar (3), consertar (2) e noite sobrevivida (20, todos); níveis em 20/30/40/55/70/90/110 XP.
   Subir de nível: coluna de luz dourada, som, 3 s invulnerável, 3 cartas sorteadas (celular: toque; teclado: 1/2/3 na TV). As 8 melhorias gerais.
   Placar: "Nv 2" + barra roxa de XP; tela de resultado mostra o nível de cada um. Bots escolhem carta qualquer. Replay atualizado de propósito.

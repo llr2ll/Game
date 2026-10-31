@@ -136,6 +136,28 @@ export const BALANCE = {
     looter: { speed: 2, noise: 0 }, // Saqueador: revistar 2x mais rápido · barulho ×0
     carpenter: { hp: 1.5, speed: 2, noise: 0.5 }, // Carpinteiro: vida das barricadas que ele faz ×1,5 · consertar/desmontar 2x mais rápido · barulho ×0,5
     medic: 2, // Primeiros socorros: levantar um aliado 2x mais rápido
+    // 🔫 Atirador
+    silencer: 0.5, // Silenciador caseiro: barulho da pistola ×0,5 (22 → 11 m)
+    pockets: { ammo: 1.5, reload: 1.25 }, // Bolsos fundos: munição na reserva (e o máximo) ×1,5 · recarga 1,25x mais rápida
+    pierce: 0.6, // Bala que atravessa: a carabina acerta mais 1 zumbi atrás, com 60% do dano
+    fisher: { cd: 4, radius: 1.25 }, // Granada de pescador: recarga da granada (s) · raio ×1,25
+    // ⚔️ Samurai
+    clean: 0.4, // Corte limpo: o 3º golpe mata quem fica com menos de 40% da vida
+    double: 0.35, // Investida dupla: segundos entre a 1ª e a 2ª investida (depois, a recarga normal)
+    cat: 0.5, // Passo de gato: barulho da katana e da corrida ×0,5
+    steel: { hits: 4, pull: 5 }, // Redemoinho de aço: golpes (normal 2) · força que puxa os zumbis para o centro
+    // 🔮 Mago
+    chain: { jumps: 2, range: 6 }, // Dardo em cadeia: saltos para outros zumbis · distância máxima de cada salto (m)
+    rain: { pieces: 3, spread: 2.6, radius: 0.6, damage: 0.6 }, // Chuva de pedras: pedaços · espalhamento (m) · raio e dano de cada um (fração do meteoro)
+    deep: 2, // Gelo profundo: segundos congelado (parado, sem atacar) em vez de lento
+    burn: 5, // Queimada: mana devolvida por zumbi morto pelo meteoro
+    // 🪕 Bardo
+    muineira: 1.3, // Muiñeira: sob a balada, ataques e recargas 1,3x mais rápidos
+    choir: { heal: 1.5, shield: 2 }, // Coro: cura ×1,5 · segundos de proteção (invulnerável)
+    loud: 3, // Onda forte: derruba quem está a menos de 3 m (em vez de empurrar)
+    lure: 10, // Isca: mirando, a canção de cura toca a 10 m (atrai a horda para lá)
+    // combinações (só sorteiam se as duas classes estão no grupo)
+    wheel: { window: 1.5, damage: 2 }, // Fogo na roda: zumbi empurrado pela onda há até 1,5 s leva ×2 do meteoro
   },
 
   // ---------------------------------------------------------------- jogando sozinho (J6)

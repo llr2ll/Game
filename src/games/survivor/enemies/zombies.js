@@ -59,7 +59,7 @@ export function CreateHorde(ctx) {
       hp, maxHp: hp, fast, score: fast ? R.score : N.score, speed: fast ? rnd(R.speed[0], R.speed[1]) : rnd(N.speed[0], N.speed[1]),
       state: 'wander', stT: 0, dur: 0, target: null, seenT: 0, tx: x, tz: z, goal: null, waitT: rnd(0, 3),
       senseT: Math.random() * 0.3, cool: 0.5, biteT: 0, bite: 0, hitT: 0, imp: 0, dying: 0, fallDir: -1,
-      kx: 0, kz: 0, slowT: 0, path: null, pathT: 0, unstick: 0, stuckT: 0, sx: x, sz: z, moving: 0, t: Math.random() * 10, siege: false,
+      kx: 0, kz: 0, slowT: 0, freezeT: 0, waveAt: -99, path: null, pathT: 0, unstick: 0, stuckT: 0, sx: x, sz: z, moving: 0, t: Math.random() * 10, siege: false,
     })
     if (e.ice) e.ice.visible = false
     e.rig.restore() // reaproveitado: volta inteiro
@@ -262,7 +262,9 @@ export function CreateHorde(ctx) {
       e.x += e.kx * dt; e.z += e.kz * dt; e.kx *= kd; e.kz *= kd
     } else e.kx = e.kz = 0
     if (e.imp > 0) react(e)
-    const slow = (e.slowT = Math.max(0, e.slowT - dt)) > 0 ? Z.iceSlow : 1
+    e.slowT = Math.max(0, e.slowT - dt)
+    if (e.freezeT > 0) { e.freezeT -= dt; e.cool = Math.max(e.cool, 0.2); if (e.state === 'grab') release(e) } // congelado (Gelo profundo): parado, sem atacar
+    const slow = e.freezeT > 0 ? 0 : e.slowT > 0 ? Z.iceSlow : 1
     if (e.ice) e.ice.visible = slow < 1
     if ((e.senseT -= dt) <= 0 && (e.state === 'wander' || e.state === 'investigate' || e.state === 'chase' || e.state === 'feed')) {
       e.senseT = rnd(0.22, 0.34)
@@ -466,7 +468,7 @@ export function CreateHorde(ctx) {
       st.noiseT = 0.4
       for (const p of alive) {
         const v = p.vehicle
-        const H = Z.hearing, r = v ? (v.seats[0] && Math.hypot(v.vx, v.vz) > 1 ? H.car : 0) : p.running ? H.run : p.speed > 0.5 ? H.walk : 0
+        const H = Z.hearing, r = v ? (v.seats[0] && Math.hypot(v.vx, v.vz) > 1 ? H.car : 0) : p.running ? H.run * (has(p, 'cat') ? BALANCE.upgrades.cat : 1) : p.speed > 0.5 ? H.walk : 0
         if (r) noise(p.x, p.z, r)
       }
     }

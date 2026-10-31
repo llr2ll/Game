@@ -14,12 +14,13 @@ const BEAM_TIME = 1.4
 const BEAM_GEO = new THREE.CylinderGeometry(0.5, 0.8, 9, 20, 1, true).translate(0, 4.5, 0)
 const BEAM_MAT = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.6, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
 
-// ctx: { scene, fx, say(texto, s), sfx(nome, opções), move (números do movimento: o Pulmão de atleta muda o fôlego) }
-export function CreateLevels({ scene, fx, say, sfx, move }) {
+// ctx: { scene, fx, players (Map), say(texto, s), sfx(nome, opções), move (números do movimento: o Pulmão de atleta muda o fôlego) }
+export function CreateLevels({ scene, fx, players, say, sfx, move }) {
   const beams = [] // { mesh, p, t }
-  // sorteia as cartas: melhorias que o jogador ainda não tem (gerais ou da classe dele)
+  const inGroup = (cls) => [...players.values()].some((o) => o.cls.id === cls)
+  // sorteia as cartas: melhorias que o jogador ainda não tem (gerais, da classe dele e combinações com quem está no grupo)
   function deal(p) {
-    const pool = UPGRADES.filter((u) => !p.mods.has(u.id) && (!u.cls || u.cls === p.cls.id))
+    const pool = UPGRADES.filter((u) => !p.mods.has(u.id) && (!u.cls || u.cls === p.cls.id) && (!u.with || inGroup(u.with)))
     const cards = []
     while (cards.length < L.cards && pool.length) cards.push(pool.splice((Math.random() * pool.length) | 0, 1)[0])
     p.cards = cards.length ? cards : null
@@ -55,6 +56,7 @@ export function CreateLevels({ scene, fx, say, sfx, move }) {
       if (!u) return false
       p.mods.add(u.id)
       if (u.id === 'skin') { const more = Math.round(p.max * (U.skin - 1)); p.max += more; p.hp += more }
+      if (u.id === 'pockets' && p.ammo) for (const w of ['carbine', 'shotgun']) p.ammo[w].reserve = Math.round(p.ammo[w].reserve * U.pockets.ammo)
       if (u.id === 'lungs') p.move = { ...move, staminaRun: move.staminaRun / U.lungs, staminaSwim: move.staminaSwim / U.lungs }
       say(`${p.name}: ${u.icon} ${u.name}`, 2)
       sfx('ui', { f: 660 })

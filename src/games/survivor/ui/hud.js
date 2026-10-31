@@ -59,7 +59,7 @@ export function CreateHud(game, climate) {
       if (climate) $('#clock').textContent = climate.label()
       $('#plist').innerHTML = [...game.players.values()].map((p) => {
         const inf = game.info(p)
-        const cds = inf.buttons.filter((b) => b.cd > 0).map((b) => `<span class="cd">${b.l} ${Math.ceil(b.cd * p.cls.cd[inf.buttons.indexOf(b)])}s</span>`).join('')
+        const cds = inf.buttons.filter((b) => b.cd > 0).map((b) => `<span class="cd">${b.l} ${Math.ceil(b.s)}s</span>`).join('')
         const car = p.vehicle ? ` · 🚗 ${p.vehicle.d.name}${p.seat.mode === 'drive' ? ' (dirigindo)' : ''}` : ''
         const mana = p.cls.id === 'mage' ? `<div class="bar mana"><i style="width:${p.mana}%"></i></div>` : ''
         const task = p.task ? ` · ${p.task.icon} ${Math.round((p.task.t / p.task.need) * 100)}%` : ''

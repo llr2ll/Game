@@ -74,7 +74,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   }
   const abilities = CreateAbilities({ scene, fx, wfx, colliders, enemies, players, hit, noise, impact, night: hooks.night || (() => false) })
   const tasks = CreateTasks({ scene, noise, sfx }) // parado fazendo algo (revistar, desmontar, barricar)
-  const levels = CreateLevels({ scene, fx, say, sfx, move: MOVE }) // XP, níveis e melhorias
+  const levels = CreateLevels({ scene, fx, players, say, sfx, move: MOVE }) // XP, níveis e melhorias
   const xp = (p, n) => levels.add(p, n)
   const loot = CreateLoot({ scene, fx, players, say, sfx, tasks, xp }) // saque nas casas (Usar perto de um móvel)
   const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact, xp, solo: () => players.size === 1 }) // barricadas em portas e janelas (Usar por dentro)
