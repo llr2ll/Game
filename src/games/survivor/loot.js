@@ -1,12 +1,14 @@
 import * as THREE from 'three'
 import { SpotsNear } from '../../shared/worldgen/buildings-registry'
 import { BALANCE } from './config/balance'
+import { has } from './levels'
 
 // Saque nas casas (J3). Usar perto de um móvel: revista (parado, barulho pequeno) e talvez acha um item.
 // Móvel já revistado (ou mesa/cama/sofá): Usar desmonta (mais tempo, barulho de martelo) e dá tábuas.
 // O que foi revistado/desmontado não volta, nem se o chunk sair e voltar (o id do móvel é a posição).
 // Itens vão para o estoque do grupo; munição vai direto para os Atiradores. Números em balance.js · loot.
 const L = BALANCE.loot
+const UP = BALANCE.upgrades
 export const ITEMS = { tabuas: ['🪵', 'tábuas'], remedio: ['🩹', 'remédio'], municao: ['📦', 'munição'], gasolina: ['⛽', 'gasolina'], raro: ['⭐', 'achado raro'] }
 // prefixo da chave do móvel (buildings.js) → nome, dá para revistar? (os outros só desmontam)
 const KINDS = [
@@ -28,8 +30,8 @@ function pick(weights) {
 const MARK_GEO = new THREE.OctahedronGeometry(0.22, 0).scale(1, 1.4, 1) // losango em pé, visível de cima
 const MARK = { search: new THREE.MeshBasicMaterial({ color: 0xffc81e, toneMapped: false }), dismantle: new THREE.MeshBasicMaterial({ color: 0xd9894a, toneMapped: false }) } // amarelo: revistar · laranja: desmontar
 
-// ctx: { scene, fx, players (Map), say(texto, s), sfx(nome, opções), tasks (tasks.js: parado fazendo algo) }
-export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
+// ctx: { scene, fx, players (Map), say(texto, s), sfx(nome, opções), tasks (tasks.js: parado fazendo algo), xp(p, n) }
+export function CreateLoot({ scene, fx, players, say, sfx, tasks, xp = () => {} }) {
   const done = new Map() // id do móvel -> 1 revistado · 2 desmontado
   const inv = { tabuas: 0, remedio: 0, municao: 0, gasolina: 0, raro: 0 }
   const marks = Array.from({ length: 12 }, () => { const m = new THREE.Mesh(MARK_GEO, MARK.search); m.visible = false; scene.add(m); return m })
@@ -69,6 +71,7 @@ export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
     const k = kindOf(s.key), y = s.y + 1
     if (a === 'search') {
       done.set(s.id, 1)
+      xp(p, BALANCE.levels.xp.search)
       if (Math.random() >= L.chance * (players.size === 1 ? BALANCE.solo.loot : 1)) { say(`${p.name}: ${k.name} sem nada`, 1.4); sfx('ui', { f: 300 }); return }
       give(p, pick(L.rooms[s.room] || L.rooms.terreo))
       fx.burst(s.fx, y, s.fz, 0xffe08a, 8, 3, 0.5)
@@ -91,7 +94,8 @@ export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
       const s = target(p)
       if (!s) return false
       const a = actionOf(s), search = a === 'search'
-      tasks.start(p, { a, icon: search ? '🔍' : '🪚', need: search ? L.search.time : L.dismantle.time, at: s, noise: search ? L.search.noise : L.dismantle.noise, beat: search ? null : 'bang', done: (pp) => finish(pp, { s, a }) })
+      const k = search ? (has(p, 'looter') ? UP.looter : null) : has(p, 'carpenter') ? UP.carpenter : null // Saqueador / Carpinteiro: mais rápido e quieto
+      tasks.start(p, { a, icon: search ? '🔍' : '🪚', need: (search ? L.search.time : L.dismantle.time) / (k ? k.speed : 1), at: s, noise: (search ? L.search.noise : L.dismantle.noise) * (k ? k.noise : 1), beat: search ? null : 'bang', done: (pp) => finish(pp, { s, a }) })
       sfx(search ? 'swap' : 'bang', { x: s.x, z: s.z })
       return true
     },

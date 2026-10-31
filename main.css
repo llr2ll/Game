@@ -11,6 +11,7 @@ html, body { height: 100%; margin: 0; background: #1b1512; overflow: hidden; fon
 @keyframes blink { to { opacity: .45 } }
 .pl.dead { opacity: .5 }
 .pl .bar.mana { height: 4px } .pl .bar.mana i { background: #ffc94a }
+.pl .bar.xp { height: 3px; margin-top: 3px } .pl .bar.xp i { background: #b48cff } /* XP até o próximo nível */
 .pl .cds { display: flex; gap: 6px; margin-top: 4px; font-size: 11px; opacity: .8 } .pl .cd { background: #fff2; padding: 1px 6px; border-radius: 4px }
 #room { position: absolute; right: 12px; top: 40px; background: #000a; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px }
 #room canvas { display: block; margin: 0 auto 6px; border-radius: 6px; background: #fff }

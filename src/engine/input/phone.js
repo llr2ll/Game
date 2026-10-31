@@ -1,6 +1,7 @@
 // Controle no celular: stick esquerdo move (ou dirige), stick direito mira (e ataca enquanto estiver inclinado).
 // Botões da classe chegam do jogo (nome + recarga) e o botão 🚗 aparece perto de um veículo.
 // Empurrar: afasta/derruba zumbis e solta do agarrão (pisa em quem está caído); pisca quando um zumbi agarra.
+// Cartas: quando o jogo manda `up` ([título, texto] de cada opção), mostra os botões; tocar manda a ação up1, up2, up3…
 const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 $('#code').value = (params.get('room') || '').toUpperCase()
@@ -8,7 +9,7 @@ $('#name').value = localStorage.getItem('name') || ''
 
 const url = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:8080`
 const input = { mx: 0, mz: 0, ax: 0, az: 0, run: 0 }
-let ws, lastHp = 100, lastHeld = false, kicked = false
+let ws, lastHp = 100, lastHeld = false, kicked = false, lastUp = ''
 
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)) }
 
@@ -67,7 +68,26 @@ function onState(m) {
   if (m.held && !lastHeld) navigator.vibrate?.([80, 40, 80])
   lastHeld = !!m.held
   if (m.hp < lastHp) navigator.vibrate?.(60)
+  showCards(m.up)
   lastHp = m.hp
+}
+
+// cartas para escolher (ex.: melhoria ao subir de nível); some ao tocar, volta se o jogo mandar outras
+function showCards(up) {
+  const key = up ? JSON.stringify(up) : ''
+  if (key === lastUp) return
+  lastUp = key
+  const el = $('#cards')
+  el.replaceChildren()
+  for (const [i, [title, text]] of (up || []).entries()) {
+    const b = document.createElement('button'), t = document.createElement('b')
+    t.textContent = title
+    b.append(t, text)
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); send({ t: 'act', a: `up${i + 1}` }); el.style.display = 'none'; navigator.vibrate?.(20) })
+    el.appendChild(b)
+  }
+  el.style.display = up ? 'flex' : 'none'
+  if (up) navigator.vibrate?.([60, 40, 60])
 }
 
 function Stick(zone, cb) {

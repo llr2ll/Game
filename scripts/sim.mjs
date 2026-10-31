@@ -103,6 +103,7 @@ export async function SimFingerprint(vite, frames = 3000) {
         if (f % 50 === i * 7) game.act(p.id, 'shove')
         if (f % 210 === i * 11) game.act(p.id, 'jump')
         if (f === 900 + i) game.act(p.id, 'use')
+        if (p.cards && (f + i * 13) % 60 === 0) game.act(p.id, `up${1 + (i % 3)}`) // subiu de nível: escolhe uma carta
         if (f === 1200 + i) game.act(p.id, 'use')
       })
       game.update(dt)
@@ -115,7 +116,7 @@ export async function SimFingerprint(vite, frames = 3000) {
     const r = (v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v)
     const state = {
       st: { time: r(game.st.time), score: game.st.score, over: game.st.over },
-      players: [...game.players.values()].map((p) => [p.id, r(p.x), r(p.z), r(p.hp), r(p.stamina), r(p.mana), p.kills, p.dead, p.weapon, JSON.stringify(p.ammo), !!p.vehicle, !!p.out]),
+      players: [...game.players.values()].map((p) => [p.id, r(p.x), r(p.z), r(p.hp), r(p.stamina), r(p.mana), p.kills, p.dead, p.weapon, JSON.stringify(p.ammo), !!p.vehicle, !!p.out, p.level, r(p.xp), [...p.mods].join(',')]),
       enemies: game.enemies.map((e) => [r(e.x), r(e.z), r(e.hp), e.state, e.fast]),
       cars: game.vehicles.list.length,
       loot: game.loot.text(),
@@ -125,7 +126,7 @@ export async function SimFingerprint(vite, frames = 3000) {
       base: !!game.base.at(),
     }
     off()
-    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 de pé (${state.players.filter((p) => p[11]).length} fora) · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'} · noite ${state.night}${state.base ? ' · base' : ''} · ${state.siege} do cerco` }
+    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 de pé (${state.players.filter((p) => p[11]).length} fora) · níveis ${state.players.map((p) => p[12]).join('/')} · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'} · noite ${state.night}${state.base ? ' · base' : ''} · ${state.siege} do cerco` }
   } finally {
     Math.random = realRandom
     Error.stackTraceLimit = realLimit

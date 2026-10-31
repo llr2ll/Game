@@ -7,6 +7,7 @@ import { CreateZombieModel, VARIANTS, GETUP_T } from '../../../shared/creatures/
 import { Navigate, wrap, turnTo } from '../../../engine/world/pathing'
 import { sfx, gate } from '../../../shared/audio/sfx'
 import { BALANCE } from '../config/balance'
+import { has } from '../levels'
 
 // Zumbis no estilo Project Zomboid: andam devagar e em bando, enxergam num cone à frente e ouvem barulho
 // (tiro, explosão, carro, corrida). Chegando perto dão o bote e AGARRAM: o jogador fica preso e leva mordidas
@@ -191,10 +192,11 @@ export function CreateHorde(ctx) {
   function shove(p) {
     if (p.dead || p.vehicle || p.swim || p.shoveCd > 0 || p.atk > 0.2) return
     p.shoveCd = PL.shoveCooldown
-    const tired = p.stamina < 10
-    p.stamina = Math.max(0, p.stamina - PL.shoveStamina)
-    let a = p.aiming ? p.aimAngle : p.facing
     const mine = list.filter((e) => e.state === 'grab' && e.target === p)
+    const cold = mine.length > 0 && has(p, 'cold') // Sangue frio: agarrado, o empurrão é de graça e derruba quem agarrou
+    const tired = !cold && p.stamina < 10
+    if (!cold) p.stamina = Math.max(0, p.stamina - PL.shoveStamina)
+    let a = p.aiming ? p.aimAngle : p.facing
     if (mine.length) a = Math.atan2(mine[0].x - p.x, mine[0].z - p.z)
     const front = [], downs = []
     for (const e of list) {
@@ -209,7 +211,7 @@ export function CreateHorde(ctx) {
       const e = downs.sort((u, v) => u[0] - v[0])[0][1]
       p.model.play('stomp', 0.42)
       p.atk = 0.35; p.slowAct = 0.3; p.slowT = 0.35
-      ctx.hit(e, 3.2, p, 0, 0)
+      ctx.hit(e, has(p, 'boot') ? e.hp + 99 : 3.2, p, 0, 0) // Bota pesada: mata na hora
       sfx('stomp', { x: e.x, z: e.z })
       if (ctx.impact) ctx.impact(e.x, e.z, 'stomp')
       fx.burst(e.x, e.fy + 0.3, e.z, BLOOD, 5, 2.5, 0.4, 0.9)
@@ -222,10 +224,11 @@ export function CreateHorde(ctx) {
     fx.arc(p.x, y, p.z, a, 0.4, 1.7, 1.6, 0xfff4e0, 0.18, 0.3)
     front.sort((u, v) => u[0] - v[0])
     sfx('shove', { x: p.x, z: p.z, cls: p.cls.id, hit: Math.min(front.length, 3) })
-    for (const [, e] of front.slice(0, 3)) {
+    const strong = has(p, 'shove') // Empurrão forte: sempre derruba, até mais zumbis
+    for (const [, e] of front.slice(0, strong ? BALANCE.upgrades.shove : 3)) {
       const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz) || 1, ux = d > 0.05 ? dx / d : Math.sin(a), uz = d > 0.05 ? dz / d : Math.cos(a)
       const behind = ux * Math.sin(e.heading) + uz * Math.cos(e.heading) > 0.3 // de costas para o jogador: cai fácil
-      const chance = tired ? 0.15 : behind ? 1 : e.state === 'stagger' ? 0.75 : 0.35
+      const chance = strong || (cold && e.state === 'grab') ? 1 : tired ? 0.15 : behind ? 1 : e.state === 'stagger' ? 0.75 : 0.35
       if (Math.random() < chance) knockDown(e, ux, uz)
       else stagger(e, rnd(0.6, 0.9))
       const push = tired ? 4.5 : 7.5

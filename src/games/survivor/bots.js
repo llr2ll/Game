@@ -1,7 +1,7 @@
 // Jogadores controlados pelo computador, SÓ PARA TESTE (?bots=1 a 3 na URL). Não fazem parte do jogo.
 // Usam o mesmo contrato do celular (game.setInput / game.act), como se fossem um celular a mais.
 // Ocupam as vagas livres (a vaga define a classe), seguem o primeiro jogador humano, atacam o zumbi mais perto,
-// usam os botões da classe e levantam quem caiu perto. Tecla B: espalhar (cada um corre ~30 m para um lado, para testar a tela dividida) / voltar.
+// usam os botões da classe, levantam quem caiu perto e escolhem uma melhoria qualquer ao subir de nível. Tecla B: espalhar (cada um corre ~30 m para um lado, para testar a tela dividida) / voltar.
 const near = (a, b) => Math.hypot(a.x - b.x, a.z - b.z)
 
 export function CreateBots(game, count) {
@@ -48,7 +48,9 @@ export function CreateBots(game, count) {
       const lead = leader()
       for (const b of bots) {
         const p = game.players.get(b.id)
-        if (!p || p.dead) continue
+        if (!p) continue
+        if (p.cards) game.act(b.id, `up${1 + ((Math.random() * p.cards.length) | 0)}`) // subiu de nível: carta qualquer
+        if (p.dead) continue
         // aliado caído a até 12 m: vai até ele e aperta Usar (levantar)
         const down = [...game.players.values()].find((o) => o !== p && o.dead && !o.out && near(o, p) < 12)
         if (down) {

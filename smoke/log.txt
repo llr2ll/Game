@@ -1,12 +1,12 @@
 [0s] 1/4 compilando o jogo…
 [1s] 2/4 subindo relay e página…
 [2s] 3/4 abrindo o jogo no navegador sem tela…
-[9s]    sala WFUH aberta no relay
-[74s] 4/4 jogando 60 s…
-[104s]    captura 02-inicio.jpg
-[154s]    captura 03-acao.jpg
-[174s]    captura 04-noite.jpg
-[189s]    captura 05-fim.jpg
-[204s]    HUD: {"topo":"🌙 Noite 1/2 · 🧟 25\nPontos 0\n🪵 0 🩹 0\n🌙 00:10 · Limpo","jogadores":"🔫 Jogador 1 · Espingarda 6/30 · 0 abates\nGranada 3s\n🪕 Celular · Alaúde · 0 abates\nCanção de cura 9s"}
+[9s]    sala JFHK aberta no relay
+[69s] 4/4 jogando 60 s…
+[102s]    captura 02-inicio.jpg
+[148s]    captura 03-acao.jpg
+[167s]    captura 04-noite.jpg
+[183s]    captura 05-fim.jpg
+[195s]    HUD: {"topo":"🌙 Noite 1/2 · 🧟 25\nPontos 0\n🪵 0 🩹 0\n🌙 00:10 · Limpo","jogadores":"🔫 Jogador 1 · Nv 1 · Espingarda 6/30 · 0 abates\nGranada 4s\n🪕 Celular · Nv 1 · Alaúde · 0 abates\nCanção de cura 9s"}
 
 PASSOU

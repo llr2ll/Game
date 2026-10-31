@@ -226,6 +226,7 @@ const S = {
   join: [0, 0.6, (o, t) => { bell(o, t, midi(76), 0.25, 0.5); bell(o, t + 0.1, midi(83), 0.25, 0.6) }],
   start: [0, 1.6, (o, t) => { arp(o, t, [50, 57, 62, 66, 69, 74], 0.07, 0.5); tone(o, t, { f: 80, f1: 40, dur: 0.6, vol: 0.6 }); hiss(o, t + 0.4, { dur: 1, a: 0.05, vol: 0.2, type: 'lowpass', f: 600, brown: true }) }],
   gameover: [0, 3.2, (o, t) => { [69, 65, 62, 57].forEach((m, i) => { pluck(o, t + i * 0.42, midi(m), 0.55, 0.998); tone(o, t + i * 0.42, { type: 'triangle', f: midi(m - 12), dur: 0.5, vol: 0.08 }) }); tone(o, t + 1.6, { f: 55, f1: 35, dur: 1.6, a: 0.1, vol: 0.5 }) }],
+  levelup: [0, 1.6, (o, t) => { [67, 72, 76, 79, 84].forEach((m, i) => bell(o, t + i * 0.08, midi(m), 0.22, 0.7)) }], // subir de nível
   supply: [0, 1, (o, t) => { thud(o, t, 0.6); [74, 79, 83].forEach((m, i) => bell(o, t + 0.12 + i * 0.08, midi(m), 0.18, 0.5)) }],
 }
 

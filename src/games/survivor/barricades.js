@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { DoorsNear, WindowsNear, BuildingAt, HasBuilding, PointInBuilding } from '../../shared/worldgen/buildings-registry'
 import { AddColliders, RemoveColliders, Blocked } from '../../engine/world/collision'
 import { BALANCE } from './config/balance'
+import { has } from './levels'
 
 // Entradas das casas: portas (J4) e janelas do térreo (J5a).
 // - De dentro da casa, perto de uma entrada, Usar prega tábuas do estoque do grupo: barricar, consertar, reforçar.
@@ -33,8 +34,8 @@ const winEntry = (w) => ({ kind: 'window', id: w.id, x: w.x, z: w.z, ox: w.nx, o
 const inside = (en, k = 0.8) => ({ x: en.x - en.ox * k, z: en.z - en.oz * k }) // ponto dentro da casa, na frente da entrada
 const outside = (en, k = 0.6) => ({ x: en.x + en.ox * k, z: en.z + en.oz * k })
 
-// ctx: { scene, fx, inv (estoque do grupo), say(texto, s), sfx(nome, opções), tasks, impact(x, z, tipo, força), solo() (jogando sozinho?) }
-export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact, solo = () => false }) {
+// ctx: { scene, fx, inv (estoque do grupo), say(texto, s), sfx(nome, opções), tasks, impact(x, z, tipo, força), xp(p, n), solo() (jogando sozinho?) }
+export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact, xp = () => {}, solo = () => false }) {
   const bars = new Map() // id da entrada -> { id, kind, x, z, hp, max, strong, b, door, group, col, boards, hpFill, flashT }
   const wins = new Map() // id da janela -> { id, glass, broken, en, hole }
   const usable = new Map() // id da janela -> dá para pular para dentro? (móvel ou escada na frente = não)
@@ -120,17 +121,21 @@ export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact, solo
     inv.tabuas -= COST[a]
     const what = en.kind === 'door' ? 'a porta' : 'a janela'
     let bar = bars.get(en.id)
+    const carp = has(p, 'carpenter') ? BALANCE.upgrades.carpenter : null // Carpinteiro: barricadas com mais vida
     if (a === 'build') {
-      bar = { id: en.id, kind: en.kind, x: en.x, z: en.z, hp: B.hp, max: B.hp, strong: false, flashT: 0 }
+      const hp = Math.round(B.hp * (carp ? carp.hp : 1))
+      bar = { id: en.id, kind: en.kind, x: en.x, z: en.z, hp, max: hp, strong: false, flashT: 0 }
       bars.set(en.id, bar)
       attach(bar, en)
       say(`${p.name} barricou ${what} 🪵`)
     } else if (a === 'repair' && bar) {
       bar.hp = Math.min(bar.max, bar.hp + B.repair.hp)
       refresh(bar)
+      xp(p, BALANCE.levels.xp.repair)
       say(`${p.name} consertou a barricada 🔨`)
     } else if (a === 'reinforce' && bar) {
-      Object.assign(bar, { strong: true, max: B.hp * 2, hp: B.hp * 2 })
+      const hp = Math.round(B.hp * 2 * (carp ? carp.hp : 1))
+      Object.assign(bar, { strong: true, max: hp, hp })
       if (bar.b) { const again = find(bar.kind, bar.id, bar.x, bar.z); detach(bar); if (again) attach(bar, again) } // redesenha com a 4ª tábua
       say(`${p.name} reforçou a barricada 🪵🪵`)
     }
@@ -201,7 +206,8 @@ export function CreateBarricades({ scene, fx, inv, say, sfx, tasks, impact, solo
         if (ready) return false
         say(`Precisa de ${COST[a]} 🪵 (revistem e desmontem móveis)`, 1.8); sfx('ui', { f: 300 }); return true
       }
-      tasks.start(p, { a, icon: a === 'repair' ? '🔨' : '🪵', need: B[a].time, at: en, noise: B.noise, beat: 'bang', done: (pp) => finish(pp, en, a) })
+      const carp = a === 'repair' && has(p, 'carpenter') ? BALANCE.upgrades.carpenter : null // Carpinteiro: conserta mais rápido e quieto
+      tasks.start(p, { a, icon: a === 'repair' ? '🔨' : '🪵', need: B[a].time / (carp ? carp.speed : 1), at: en, noise: B.noise * (carp ? carp.noise : 1), beat: 'bang', done: (pp) => finish(pp, en, a) })
       sfx('bang', { x: en.x, z: en.z })
       return true
     },

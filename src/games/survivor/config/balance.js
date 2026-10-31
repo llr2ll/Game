@@ -121,6 +121,23 @@ export const BALANCE = {
     vehicle: { carDamage: 0.9, playerDamage: 0.35 }, // dentro do carro: o carro leva 90% do dano e o jogador só 35%
   },
 
+  // ---------------------------------------------------------------- XP, níveis e melhorias (J7)
+  // Cada jogador ganha XP; ao subir de nível escolhe 1 de 3 melhorias (no celular; no teclado: 1, 2 ou 3). A partida não pausa.
+  levels: {
+    xp: { kill: 1, runner: 2, search: 3, repair: 2, night: 20 }, // XP por: abate · abate de corredor · revistar · consertar barricada · noite sobrevivida (todos)
+    need: [20, 30, 40, 55, 70, 90, 110], // XP para cada nível seguinte (1→2, 2→3…); depois do último, repete o último
+    cards: 3, // quantas melhorias aparecem para escolher
+    invulnerable: 3, // segundos invulnerável ao subir de nível (para escolher em paz)
+  },
+  upgrades: { // números das melhorias (nomes e textos em config/upgrades.js)
+    lungs: 1.4, // Pulmão de atleta: fôlego ×1,4 (gasta menos ao correr e nadar)
+    skin: 1.2, // Pele dura: vida máxima ×1,2
+    shove: 5, // Empurrão forte: sempre derruba, até 5 zumbis
+    looter: { speed: 2, noise: 0 }, // Saqueador: revistar 2x mais rápido · barulho ×0
+    carpenter: { hp: 1.5, speed: 2, noise: 0.5 }, // Carpinteiro: vida das barricadas que ele faz ×1,5 · consertar/desmontar 2x mais rápido · barulho ×0,5
+    medic: 2, // Primeiros socorros: levantar um aliado 2x mais rápido
+  },
+
   // ---------------------------------------------------------------- jogando sozinho (J6)
   solo: {
     medkit: 1, // remédios no estoque no começo da partida

@@ -125,7 +125,9 @@ export async function LoadGame() {
   if (import.meta.env.DEV) window.__game = game // só no npm run dev: para testes automáticos e depuração
   hud = CreateHud(game, climate)
   bots = CreateBots(game, BOTS)
-  BindKeyboard(game, KEYS)
+  // teclado: com cartas de melhoria na tela, 1/2/3 escolhem a carta (senão, trocam a arma do Atirador)
+  const PICK = { carbine: 'up1', shotgun: 'up2', pistol: 'up3' }
+  BindKeyboard({ players: game.players, setInput: game.setInput, act: (id, a) => game.act(id, game.players.get(id)?.cards && PICK[a] ? PICK[a] : a) }, KEYS)
   setInterval(notifyPhones, 1000)
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && phase === 'playing') toLobby() })
 

@@ -1,4 +1,5 @@
 import { BALANCE } from './config/balance'
+import { has } from './levels'
 
 // Queda (J6): quem cai fica no chão por `fall.bleed` s esperando ajuda. Um aliado ao lado aperta Usar e fica parado
 // `fall.lift` s para levantar; durante o levantar, Usar de novo gasta 1 🩹 e levanta na hora. Sem ajuda a tempo:
@@ -37,7 +38,8 @@ export function CreateFall({ players, tasks, inv, fx, say, sfx }) {
     rise(o, p, true)
   }
   function lift(p, o) {
-    tasks.start(p, { a: 'lift', icon: '🤝', o, need: F.lift, at: o, noise: F.noise, down: p === o, valid: () => downed(o), done: () => { if (p === o) selfLeft--; rise(o, p) } })
+    const k = p !== o && has(p, 'medic') ? BALANCE.upgrades.medic : 1 // Primeiros socorros: levanta aliado mais rápido
+    tasks.start(p, { a: 'lift', icon: '🤝', o, need: F.lift / k, at: o, noise: F.noise, down: p === o, valid: () => downed(o), done: () => { if (p === o) selfLeft--; rise(o, p) } })
     sfx('swap', { x: o.x, z: o.z })
   }
 
