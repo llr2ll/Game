@@ -55,8 +55,8 @@ export function CreateLoot({ scene, fx, players, say, sfx, tasks }) {
     const [icon, name] = ITEMS[item]
     const gunners = item === 'municao' ? [...players.values()].filter((o) => o.cls.id === 'gunner') : []
     if (gunners.length) {
-      const caps = BALANCE.rules.supply
-      for (const g of gunners) for (const w of ['carbine', 'shotgun']) g.ammo[w].reserve = Math.min(g.ammo[w].reserve + L.ammo[w], Math.max(g.ammo[w].reserve, caps[w][1]))
+      const caps = BALANCE.rules.ammoCap
+      for (const g of gunners) for (const w of ['carbine', 'shotgun']) g.ammo[w].reserve = Math.min(g.ammo[w].reserve + L.ammo[w], Math.max(g.ammo[w].reserve, caps[w]))
       say(`${p.name} achou ${icon} ${name} para o Atirador`)
     } else {
       const n = item === 'tabuas' ? randInt(L.planks) : 1

@@ -32,7 +32,7 @@ Endereço do relay no navegador: `VITE_WS_URL` se existir; senão `ws(s)://<mesm
   3. **Caches:** gera um trecho de novo com os limites dos caches encolhidos (x0, x0,004, x0,02), esquecendo antes de cada chunk;
      tem de dar igual. Pega cache que guarda estado ou caches ligados esquecidos separados (testado: acusa o erro).
   4. **Jogo (replay):** `scripts/sim.mjs` joga 100 s com 4 jogadores (uma classe cada) com sorteio e relógio fixos e compara o hash com
-     `scripts/sim-fingerprint.txt` (quadro 600: o 4º jogador revista e desmonta um móvel; quadro 1700, à noite: barrica e reforça uma porta). **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
+     `scripts/sim-fingerprint.txt` (o relógio do dia anda das 16h48 até as 4h48; quadro 600: o 4º jogador revista e desmonta um móvel; quadro 761: põe o rádio; quadro 1700, à noite: barrica e reforça uma porta; à noite o cerco manda zumbis para a base). **PR de organização tem de dar igual.** PR que muda a jogabilidade de propósito: `npm run check -- --update-sim`
      e dizer isso na descrição. Detalhes que importam: roda em processo novo; só sorteios feitos por código de `src/` entram na sequência fixa
      (o Vite e o Three.js também sorteiam, e isso mudaria com a ordem dos arquivos). `SIM_TRACE=arquivo node scripts/sim.mjs` grava o rastro
      quadro a quadro para achar onde dois replays se separam.
@@ -77,12 +77,13 @@ src/games/survivor/       este jogo
   main.js                 liga tudo: renderer, clima, lobby, rede, teclado, loop; Wire() conecta motor ↔ mundo ↔ sons
   config/balance.js       TODOS os números ajustáveis (classes, armas, habilidades, zumbis, regras, dia), comentados em português
   config/weapons.js       nomes e ordem das armas (números vêm do balance.js)
-  rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, suprimentos, fim de jogo
+  rules/survival.js       REGRAS: jogadores (classe escolhida + anel da cor da vaga), dano, morte/revive, vitória/derrota + resultado
   abilities/classes.js    as 4 classes e suas habilidades
   loot.js                 saque (J3): revistar/desmontar móveis, estoque do grupo, marcadores
   barricades.js           entradas: portas (J4) e janelas do térreo (J5a) — barricar/consertar/reforçar por dentro; zumbi bate até quebrar,
                           quebra o vidro e pula a janela; barrinha de vida
-  base.js                 rádio (J5a): a casa onde ele está é a base (o cerco do J5b vai atrás dela)
+  base.js                 rádio (J5a): a casa onde ele está é a base (o cerco vai atrás dela)
+  siege.js                cerco (J5b): conta as noites, avisos do rádio, picos da horda, vitória no amanhecer do 3º dia
   tasks.js                "parado fazendo algo" (revistar, desmontar, barricar): cancelamento, barulho por segundo, anel de progresso
   bots.js                 ?bots=1..3: jogadores do computador SÓ PARA TESTE (contrato do celular; tecla B espalha/junta)
   enemies/zombies.js      IA da horda: visão, audição, agarrão, renascer
@@ -93,6 +94,7 @@ src/games/survivor/       este jogo
 - Avisos (`engine/core/events.js`): o mundo emite `door-open`, `door-close`, `thunder`, `splash`, `vehicle-spot`; o jogo decide o som/carro.
 - Funções passadas ao motor: `CreateChunks({ scene, colliders, size, generate, onLoad, onUnload, afterUnload })`, `SetDeepTest` (água funda),
   `SetIndoorRoute` (zumbi pela porta/escada), `SetIndoorTest` (parede abafa som). Lobby recebe `choices`, `sound`, `subtitle`. Teclado, as teclas extras.
+  As regras recebem `hooks` do `main.js`: `night`, `loaded`, `shake`, `clock`/`setClock` (hora do dia do clima, 0..1; `climate.time` aceita escrita).
 - `shared` pode importar `shared` (ex.: `creatures/zombie-model` usa `SoleDepth` de `characters/player`; `fx/gore` usa `worldgen`).
 
 **Estado e memória (F2)** — o que é instância e o que continua único:
@@ -194,6 +196,12 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
   pela colisão, ele pula (teleporta para dentro depois de `window.climb` s). A horda pergunta `ctx.entry(e, x, z, dt)` antes de andar
   (perseguindo/investigando): alvo numa casa e janela utilizável mais perto que a porta → vai pela janela. Janela com móvel/escada na frente
   (ponto de dentro bloqueado) não é usada. Vidro quebrado continua quebrado (buraco escuro desenhado por fora).
+- **Cerco (J5b):** a partida começa ao meio-dia (`siege.start`; as regras chamam `hooks.setClock` no 1º quadro). `siege.js` conta as noites pelo
+  relógio (`day.nightFrom`/`nightTo`) e devolve `'win'` no amanhecer depois de `siege.nights`. À noite, com rádio posto, `director()` dá à horda
+  `{ x, z, extra, share, ring }`: zumbis a mais nos picos (`pulses`), parte nascendo no anel 40–50 m da base; esses ficam com `e.siege` e vão
+  investigar a base (não somem ao amanhecer nem por estarem longe dos jogadores, enquanto durar a noite). Sem rádio: horda normal.
+  Partida de 2 noites ≈ 17 min (`day.seconds` 600). Munição só do saque (`rules.ammoCap`); os suprimentos a cada 75 s saíram.
+  Derrota = todos caídos ao mesmo tempo. Resultado em `st.result` (painel `#result` no `hud.js`) por `rules.resultTime` s.
 - `window.__game` existe só no `npm run dev` (testes automáticos e depuração); a versão compilada não tem.
 - Interiores (`buildings.js`): térreo (cozinha/sala: fogão, balcão, mesa, sofá, cômoda, baú, estante), andar de cima (quarto: cama,
   guarda-roupa, baú, escrivaninha) e sótão das casas de 3 andares (caixotes, barris, sacos, baú). Lojas: prateleiras, balcão, vitrine.
@@ -201,6 +209,7 @@ Não implementar online com uma tela por jogador. Não mexer na câmera (exceç�
 
 ## Plano da sessão de fundação (30/10/2026)
 0. Verificação ✓ · 1. PR "limpeza" ✓ · 2. `docs/GAME-DESIGN.md` ✓ (decisões registradas) · 3. Fundação em 3 PRs: F1 (PR #4) · F2 (PR #5) · F3 (PR aberto).
+4. Vertical slice (seção 10 do GAME-DESIGN), um PR por vez: J1 · J2 · J3 · J4 · J5a · J5b (PRs abertos, aguardando merge em ordem) · próximo: J6 (regra de queda).
 Estrutura-alvo da Etapa 3 (criar só pastas com conteúdo real; imports só descem `games` → `shared` → `engine`, verificado por `npm run check`):
 ```
 src/engine/   {core, render, input, net, audio, world, ui}     genérico, não sabe que existem zumbis
@@ -213,6 +222,10 @@ F2 estado global → instâncias com `reset()` + caches limpos por distância (m
 ## Histórico de PRs
 - **limpeza** — `node_modules/` fora do Git; `.gitignore` aceita .glb/.gltf; `player-moviment.js` → `player-movement.js`; README sem `reflections.js`;
   `npm run smoke`; este CLAUDE.md; `docs/COMO-FUNCIONA.md`; `docs/TESTE-MANUAL.md`. Nenhuma mudança no jogo.
+- **j5b-cerco (J5b)** — a partida vira o cerco: começa ao meio-dia, rádio avisa ("o exército chega no amanhecer do 3º dia" e 2 h antes de escurecer);
+  à noite o diretor manda a horda contra a base em 2 picos (21h e 2h; 12 zumbis a mais, ×1,6 na 2ª noite, 75% nascem a 40–50 m da base).
+  Vitória no amanhecer do 3º dia; derrota quando todos caem; tela de resultado. Suprimentos automáticos de munição removidos (munição só do saque).
+  Placar: "☀ Dia 1" / "🌙 Noite 1/2 · 🧟 pico!". Replay atualizado de propósito (relógio anda no replay; 11 zumbis do cerco na base).
 - **j5a-base-janelas (J5a)** — janelas do térreo viram entradas: zumbi atrás de alguém lá dentro vai pela janela se for mais perto que a porta,
   bate na barricada, quebra o vidro (4 de vida) e pula em 1,5 s; janela aceita barricada como a porta. Rádio: Usar num lugar livre dentro de uma
   casa marca a base (📻 no placar; anel verde pulsando); Usar perto dele pega de volta. Replay atualizado (zumbis agora usam janelas).

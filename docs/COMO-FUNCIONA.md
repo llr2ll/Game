@@ -68,8 +68,9 @@ Exemplo: o mundo avisa "a porta abriu" e o jogo decide qual som tocar. O gerador
 | `src/games/survivor/loot.js` | O saque: revistar e desmontar móveis, o estoque do grupo | "Jogador 1 achou 🩹 remédio" |
 | `src/games/survivor/barricades.js` | Portas e janelas: barricadas, zumbis batendo, vidro quebrando, zumbi pulando a janela | "⚠ Barricada sob ataque!" |
 | `src/games/survivor/base.js` | O rádio que marca a casa-base | 📻 no placar |
+| `src/games/survivor/siege.js` | O cerco: conta as noites, avisa pelo rádio, manda a horda contra a base à noite, decide a vitória | "🌙 Noite 1/2 · 🧟 pico!" |
 | `src/games/survivor/bots.js` | Jogadores do computador, só para teste (`?bots=3`) | 🤖 Bot 1 no placar |
-| `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, suprimentos, fim de jogo | "FIM DE JOGO · sobreviveram 03:12" |
+| `src/games/survivor/rules/` | **As regras**: dano, morte, voltar em 25 s, vitória/derrota e a tela de resultado | "🚁 VITÓRIA · 2/2 noites" |
 | `src/games/survivor/abilities/` | As 4 classes e as habilidades | Samurai dando a investida |
 | `src/games/survivor/enemies/` | O que os zumbis veem, ouvem e fazem | Zumbi vindo atrás do barulho do tiro |
 | `scripts/` | Testes automáticos: `smoke` (abre o jogo e procura erros) e `check` (andares + mapa igual) | — |

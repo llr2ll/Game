@@ -120,7 +120,7 @@ export async function LoadGame() {
     // no menu, o celular só troca a classe (◀ ▶); na partida, as ações vão para o jogo
     onAct: (id, a) => (phase === 'lobby' ? lobby.pick(id, a === 'prev' ? -1 : a === 'next' ? 1 : 0) : game.act(id, a)),
   })
-  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < BALANCE.day.nightTo || climate.time > BALANCE.day.nightFrom, loaded: chunks.loaded, shake: split.shake })
+  game = CreateGame(scene, colliders, net, { onEnd: toLobby, night: () => climate.time < BALANCE.day.nightTo || climate.time > BALANCE.day.nightFrom, loaded: chunks.loaded, shake: split.shake, clock: () => climate.time, setClock: (t) => { climate.time = t } })
   events.on('vehicle-spot', (p) => game.vehicles.register(p)) // vaga na estrada → carro dirigível
   if (import.meta.env.DEV) window.__game = game // só no npm run dev: para testes automáticos e depuração
   hud = CreateHud(game, climate)

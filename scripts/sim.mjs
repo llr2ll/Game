@@ -42,8 +42,11 @@ export async function SimFingerprint(vite, frames = 3000) {
     SetDeepTest(TooDeep); SetIndoorRoute(reg.ChaseTarget); SetIndoorTest(reg.PointInBuilding)
     const chunks = CreateChunks({ scene, colliders, size: CHUNK_SIZE, generate: GenerateChunk, afterUnload: TrimCaches,
       onLoad: (c) => reg.AddBuildings(c.userData.buildings), onUnload: (c) => reg.RemoveBuildings(c.userData.buildings) })
-    let night = false
-    const game = CreateGame(scene, colliders, null, { onEnd: () => {}, night: () => night, loaded: chunks.loaded })
+    // relógio do replay: das 16h48 às 4h48 em 100 s (uma noite inteira, com os dois picos do cerco)
+    const { BALANCE } = await load('/src/games/survivor/config/balance.js')
+    let hour = 0.7
+    const night = () => hour < BALANCE.day.nightTo || hour > BALANCE.day.nightFrom
+    const game = CreateGame(scene, colliders, null, { onEnd: () => {}, night, loaded: chunks.loaded, clock: () => hour, setClock: () => {} })
     const off = events.on('vehicle-spot', (p) => game.vehicles.register(p))
     chunks.update([{ x: 0, z: 0 }]); chunks.process(999)
 
@@ -53,12 +56,14 @@ export async function SimFingerprint(vite, frames = 3000) {
     const dt = 1 / 30
     for (let f = 0; f < frames; f++) {
       now += dt * 1000
-      if (f === frames / 2) night = true
+      hour = (0.7 + (f / frames) * 0.5) % 1
       const list = [...game.players.values()]
       // saque: no quadro 600 o 4º jogador vai até um móvel, revista e depois desmonta (fica parado até o quadro 760)
       const looter = list[3]
       if (looter && f === 600) { const sp = reg.SpotsNear(0, 0, 0, 60).find((x) => /^(dresser|wardrobe|chest|shelf|desk|stove|counter)/.test(x.key)); if (sp) Object.assign(looter, { x: sp.fx, z: sp.fz, lv: 0, vx: 0, vz: 0 }) }
       // barricada: no quadro 1700 (noite) o mesmo jogador entra na casa mais perto, barrica e reforça a porta (parado até 1900)
+      // rádio: depois do saque, o mesmo jogador põe o rádio nessa casa (vira a base do cerco)
+      if (looter && f === 761) game.base.use(looter)
       if (looter && f === 1700) {
         game.loot.inv.tabuas += 4
         const d = reg.DoorsNear(0, 0, 60).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]
@@ -105,9 +110,12 @@ export async function SimFingerprint(vite, frames = 3000) {
       cars: game.vehicles.list.length,
       loot: game.loot.text(),
       bars: game.bars.list(),
+      night: game.siege.st.night,
+      siege: game.enemies.filter((e) => e.siege && e.state !== 'dead').length,
+      base: !!game.base.at(),
     }
     off()
-    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'}` }
+    return { hash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), summary: `${state.players.filter((p) => !p[7]).length}/4 vivos · ${state.enemies.length} zumbis · ${state.st.score} pontos · saque ${state.loot} · barricadas ${state.bars.map((b) => `${b.hp}/${b.max}`).join(' ') || 'nenhuma'} · noite ${state.night}${state.base ? ' · base' : ''} · ${state.siege} do cerco` }
   } finally {
     Math.random = realRandom
     Error.stackTraceLimit = realLimit

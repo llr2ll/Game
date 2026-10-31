@@ -108,8 +108,8 @@ export const BALANCE = {
   // ---------------------------------------------------------------- regras da partida
   rules: {
     revive: { time: 25, hp: 0.5, invulnerable: 2 }, // quem cai volta em 25 s · com metade da vida · 2 s invulnerável
-    supply: { every: 75, carbine: [30, 180], shotgun: [8, 48] }, // suprimentos a cada 75 s: +munição até o limite [quanto, máximo]
-    gameOverDelay: 6, // segundos mostrando "FIM DE JOGO" antes de voltar ao menu
+    ammoCap: { carbine: 180, shotgun: 48 }, // munição máxima na reserva do Atirador (munição só vem do saque)
+    resultTime: 12, // segundos mostrando o resultado (vitória/derrota) antes de voltar ao menu
     vehicle: { carDamage: 0.9, playerDamage: 0.35 }, // dentro do carro: o carro leva 90% do dano e o jogador só 35%
   },
 
@@ -129,7 +129,7 @@ export const BALANCE = {
       loja: { tabuas: 30, remedio: 30, municao: 30, gasolina: 5, raro: 5 }, // lojas
     },
     planks: [1, 2], // tábuas por achado (mín–máx)
-    ammo: { carbine: 20, shotgun: 6 }, // munição achada vai direto para cada Atirador do grupo (até o limite dos suprimentos); sem Atirador, fica guardada
+    ammo: { carbine: 20, shotgun: 6 }, // munição achada vai direto para cada Atirador do grupo (até rules.ammoCap); sem Atirador, fica guardada
   },
 
   // ---------------------------------------------------------------- barricadas (porta das casas, por dentro)
@@ -153,6 +153,20 @@ export const BALANCE = {
     prefer: 1, // o zumbi só troca a porta pela janela se ela estiver pelo menos 1 m mais perto
   },
   radio: { reach: 1.2 }, // distância para pegar o rádio de volta (o rádio marca a casa-base)
+
+  // ---------------------------------------------------------------- cerco (a partida)
+  // Começa ao meio-dia. À noite, o diretor manda a horda contra a base (casa do rádio) em picos. Sem rádio, a horda vai atrás de vocês.
+  // Vitória no amanhecer depois de `nights` noites; derrota se todos caírem ao mesmo tempo. Horas em fração do dia (0,5 = meio-dia).
+  siege: {
+    nights: 2, // noites para aguentar até o resgate (o exército chega no amanhecer seguinte)
+    start: 0.5, // hora em que a partida começa (0,5 = meio-dia)
+    warn: 0.083, // o rádio avisa esse tanto antes de escurecer (0,083 ≈ 2 horas do jogo ≈ 50 s reais)
+    pulses: [{ from: 0.875, to: 0.958 }, { from: 0.083, to: 0.167 }], // picos da noite: 21h–23h e 2h–4h
+    pulseSize: 12, // zumbis a mais durante um pico da 1ª noite
+    perNight: [1, 1.6], // multiplicador do pico em cada noite (a 2ª é mais forte)
+    share: 0.75, // fração dos zumbis que nasce em volta da base durante o pico (o resto, em volta de vocês)
+    ring: [40, 50], // distância da base onde a horda do cerco nasce (fora da vista)
+  },
 
   // ---------------------------------------------------------------- sensação ("juice"): só aparência, a não ser a pausa
   juice: {

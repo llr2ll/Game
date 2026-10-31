@@ -21,13 +21,14 @@ Você precisa de **1 celular** e do teclado do PC. Para o item 12 (4 jogadores),
 | 8 | **Carro**: chegue perto de um carro (há carros na largada), E entra, WASD dirige, E sai | O botão 🚗 aparece no celular perto do carro. Motor faz barulho | ☐ |
 | 9 | **Casa**: entre por uma porta e suba a escada (fica no fundo da casa) | A porta abre sozinha. O telhado some e você vê o andar de cima | ☐ |
 | 10 | **Tela dividida**: afaste o celular e o teclado (~20 passos) e depois junte | A tela se divide em duas e depois volta a ser uma | ☐ |
-| 11 | **Morrer e voltar**: deixe um jogador ser mordido até cair | Com 2 jogadores: volta em 25 s ao lado do outro. Sozinho: "FIM DE JOGO" e volta ao menu | ☐ |
-| 12 | **Noite**: aperte N várias vezes (+1 hora cada) até 20:00 | O céu escurece, os postes acendem e aparecem mais zumbis | ☐ |
+| 11 | **Morrer e voltar**: deixe um jogador ser mordido até cair | Com 2 jogadores: volta em 25 s ao lado do outro. Sozinho: tela "💀 DERROTA" com noites, abates e estoque; uns 12 s depois volta ao menu | ☐ |
+| 12 | **Noite**: a partida começa ao meio-dia; aperte N várias vezes (+1 hora cada) até 20:00 | O céu escurece, os postes acendem e aparecem mais zumbis | ☐ |
 | 13 | **Esc** durante a partida | Volta ao menu sem travar | ☐ |
 | 14 | **Sensação**: atire, jogue granada, dê o 3º golpe da katana | Anel fraco no chão até onde o som foi · zumbi pisca branco · a tela treme na explosão · o 3º golpe dá um "tranco" curtinho · à noite o tiro clareia o chão | ☐ |
 | 15 | **Saque**: entre numa casa, chegue perto de uma cômoda e aperte E (ou o botão do celular) | Losangos amarelos nos móveis perto · o botão do celular vira "🔍 Revistar" · anel cresce sob você · mensagem do que achou · estoque no topo muda. Use de novo: "🪚 Desmontar", martelo, +tábuas. Andar no meio cancela | ☐ |
 | 16 | **Barricada**: junte 2 🪵 (desmonte móveis), fique dentro da casa perto da porta e aperte E | O botão vira "🪵 Barricar (2)" · martelo · tábuas na porta + barrinha verde em cima. Saia e entre pela porta: você passa. Atraia zumbis: eles param na porta e batem; a barrinha cai, aparece "⚠ Barricada sob ataque". Conserte (1 🪵) e reforce (2 🪵) | ☐ |
 | 17 | **Janelas e rádio**: dentro de uma casa, num lugar sem móvel, aperte E | "📻 Pôr rádio" · anel verde no chão · 📻 no placar. Atraia um zumbi do lado de uma janela: ele bate, o vidro quebra (barulho de vidro, buraco escuro) e ele pula para dentro. Barrique uma janela (E perto dela, por dentro): o zumbi bate nela em vez de pular | ☐ |
+| 18 | **Cerco**: ponha o rádio numa casa e barrique. Aperte N até escurecer (umas 7 vezes) e espere ~1 min; depois N até amanhecer, de novo até a 2ª noite e até amanhecer | Começo: "📻 Rádio: o exército chega no amanhecer do 3º dia" · placar "☀ Dia 1" → "🌙 Noite 1/2" · por volta das 21h "🧟 pico!" e zumbis chegam de todos os lados na base · "☀ Amanheceu. Falta 1 noite" · no amanhecer do dia 3: tela "🚁 VITÓRIA" e volta ao menu. Atirador: a munição não chega mais sozinha (só do saque) | ☐ |
 
 Para testar outra classe pelo teclado: Esc → no menu, aperte A ou D → Enter.
 

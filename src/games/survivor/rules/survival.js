@@ -18,11 +18,12 @@ import { CreateLoot } from '../loot'
 import { CreateTasks } from '../tasks'
 import { CreateBarricades } from '../barricades'
 import { CreateBase } from '../base'
+import { CreateSiege } from '../siege'
 
 const MAX_PLAYERS = 4
 // números das regras: config/balance.js
 const RU = BALANCE.rules, PL = BALANCE.player, J = BALANCE.juice
-const REVIVE_T = RU.revive.time, SUPPLY_T = RU.supply.every
+const REVIVE_T = RU.revive.time
 // movimento (shared) com os números deste jogo; a balada do Bardo também acelera
 const MOVE = { ...PL, buffSpeed: BALANCE.bard.courage.speed }
 // anel da cor da vaga no chão, sob os pés: com classes repetidas, cada um se acha na tela (desenhado depois da sombra)
@@ -30,6 +31,7 @@ const RING_GEO = new THREE.RingGeometry(0.5, 0.68, 28).rotateX(-Math.PI / 2)
 const RING_MAT = PLAYER_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false }))
 
 // hooks: { onEnd() (fim de jogo), night() (zumbis enxergam menos e são mais numerosos), loaded(x, z) (chunk carregado?),
+//          clock() / setClock(t) (hora do dia 0..1: o cerco conta as noites; sem relógio = sem cerco),
 //          shake(x, z, power, time, radius) (tremor nas telas perto) }
 export function CreateGame(scene, colliders, net, hooks = {}) {
   const players = new Map()
@@ -37,7 +39,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const fx = CreateFX(scene)
   const gore = CreateGore(scene) // sangue no chão/paredes e pedaços de zumbi
   const vehicles = CreateVehicles(scene, fx, wfx)
-  const st = { time: 0, score: 0, over: false, overT: 0, msg: '', msgT: 0, sync: 0, supplyT: SUPPLY_T, stopT: 0 }
+  const st = { time: 0, score: 0, over: false, overT: 0, msg: '', msgT: 0, sync: 0, stopT: 0, result: null }
 
   // sensação de impacto: tremor nas telas perto e, nos golpes fortes, uma pausa curtinha no jogo (números em balance.js · juice)
   function impact(x, z, kind, amount = 1) {
@@ -49,7 +51,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const say = (t, s = 2.2) => { st.msg = t; st.msgT = s }
   const alive = () => [...players.values()].filter((p) => !p.dead)
 
-  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true), impact, bash: (e) => bars.bash(e), entry: (e, x, z, dt) => bars.entry(e, x, z, dt) })
+  const horde = CreateHorde({ scene, fx, gore, players, hurt: (p, d) => hurt(p, d), hit: (...a) => hit(...a), night: hooks.night || (() => false), loaded: hooks.loaded || (() => true), impact, bash: (e) => bars.bash(e), entry: (e, x, z, dt) => bars.entry(e, x, z, dt), director: () => siege.director() })
   const enemies = horde.list
 
   // dano num zumbi (todas as fontes: tiro, espada, magia, onda, pisão, atropelamento); p = quem leva o crédito
@@ -74,6 +76,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
   const loot = CreateLoot({ scene, fx, players, say, sfx, tasks }) // saque nas casas (Usar perto de um móvel)
   const bars = CreateBarricades({ scene, fx, inv: loot.inv, say, sfx, tasks, impact }) // barricadas em portas e janelas (Usar por dentro)
   const base = CreateBase({ scene, say, sfx }) // rádio: a casa onde ele está é a base
+  const siege = CreateSiege({ clock: hooks.clock, base, say, sfx }) // noites, picos da horda contra a base, vitória
 
   // slot = vaga do lobby: cor e ponto de largada · choice = classe escolhida (0 Atirador · 1 Samurai · 2 Mago · 3 Bardo; sem escolha = a da vaga)
   function addPlayer(id, name, slot, choice) {
@@ -153,7 +156,17 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     sfx('revive', { x, z })
   }
 
+  // fim da partida: resultado na tela por um tempo e depois volta ao menu
+  function finish(win) {
+    st.over = true
+    st.overT = RU.resultTime
+    const kills = [...players.values()].reduce((n, p) => n + p.kills, 0)
+    st.result = { win, nights: win ? BALANCE.siege.nights : Math.max(0, siege.st.night - (siege.st.wasNight ? 1 : 0)), of: BALANCE.siege.nights, time: clock(st.time), kills, score: st.score, bars: bars.list().length, broken: bars.broken().length, loot: loot.text(), base: !!base.at() }
+    st.msg = ''; st.msgT = 0 // o painel de resultado (hud.js) mostra tudo
+    sfx(win ? 'supply' : 'gameover')
+  }
   function clearAll() {
+    siege.clear()
     loot.clear()
     bars.clear()
     base.clear()
@@ -168,13 +181,13 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
     for (const p of [...players.keys()]) removePlayer(p)
     clearAll()
     vehicles.clear()
-    Object.assign(st, { time: 0, score: 0, over: false, msg: '', msgT: 0, supplyT: SUPPLY_T, stopT: 0 })
+    Object.assign(st, { time: 0, score: 0, over: false, msg: '', msgT: 0, stopT: 0, result: null })
   }
   function restart() {
     clearAll()
     for (const p of players.values()) if (p.vehicle) vehicles.exit(p, true)
     vehicles.clear()
-    Object.assign(st, { time: 0, score: 0, over: false, supplyT: SUPPLY_T, stopT: 0 })
+    Object.assign(st, { time: 0, score: 0, over: false, stopT: 0, result: null })
     for (const p of players.values()) {
       Object.assign(p, { dead: false, stamina: 100, tired: false, jy: 0, vy: 0, lv: 0, gy: undefined, x: (p.idx - 1.5) * 1.3, z: 0, vx: 0, vz: 0, held: 0, struggle: 0, reviveT: 0 })
       InitClassState(p)
@@ -198,18 +211,17 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
       if (p.drown && !p.dead) { p.hp -= PL.drown * dt; if (p.hp <= 0) die(p) } // sem fôlego na água funda
     }
 
-    // sobrevivência sem fim: o tempo conta, suprimentos de vez em quando, quem cai volta ao lado de um aliado
+    // cerco: começa ao meio-dia; aguentar as noites até o resgate; quem cai volta ao lado de um aliado
     if (players.size && !st.over) {
-      if (st.time === 0) say('Sobreviva! Empurre os zumbis (V / Empurrar)', 4)
+      if (st.time === 0) {
+        if (hooks.setClock) hooks.setClock(BALANCE.siege.start)
+        say(`📻 Rádio: o exército chega no amanhecer do ${BALANCE.siege.nights + 1}º dia. Ponham o rádio numa casa e barriquem!`, 6)
+      }
       st.time += dt
       const list = alive()
       for (const p of players.values()) if (p.dead && list.length && (p.reviveT -= dt) <= 0) revive(p, list)
-      if ((st.supplyT -= dt) <= 0) {
-        st.supplyT = SUPPLY_T
-        for (const p of players.values()) for (const w of ['carbine', 'shotgun']) { const [add, cap] = RU.supply[w]; p.ammo[w].reserve = Math.min(p.ammo[w].reserve + add, cap) }
-        if ([...players.values()].some((p) => p.cls.id === 'gunner')) { say('📦 Suprimentos: +munição'); sfx('supply') }
-      }
-      if (!alive().length) { st.over = true; st.overT = RU.gameOverDelay; say(`FIM DE JOGO · sobreviveram ${clock(st.time)}`, RU.gameOverDelay); sfx('gameover') }
+      if (siege.update() === 'win') finish(true)
+      else if (!alive().length) finish(false)
     } else if (st.over && (st.overT -= dt) <= 0) { if (hooks.onEnd) hooks.onEnd(); else restart() }
 
     // zumbis e veículos
@@ -244,7 +256,7 @@ export function CreateGame(scene, colliders, net, hooks = {}) {
 
   // estoque do grupo + base marcada (placar e celular)
   const invText = () => loot.text() + (base.at() ? '  📻' : '')
-  return { players, enemies, vehicles, loot, bars, base, invText, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p) }
+  return { players, enemies, vehicles, loot, bars, base, siege, invText, st, clear, addPlayer, removePlayer, setInput, act, update, alive, zombies: () => horde.alive(), info: (p) => abilities.info(p) }
 }
 
 export const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`

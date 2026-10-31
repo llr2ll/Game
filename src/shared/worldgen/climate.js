@@ -280,6 +280,7 @@ export function CreateClimate(scene, light, { daySeconds = DAY_SECONDS } = {}) {
 
   return {
     get time() { return st.t },
+    set time(v) { st.t = ((v % 1) + 1) % 1 }, // acertar o relógio (ex.: a partida começa ao meio-dia)
     get weather() { return WEATHER[st.kind] },
     // para o som: força do vento (com rajada), chuva 0..1, chão molhado 0..1, neblina 0..1
     get wind() { return st.ws },

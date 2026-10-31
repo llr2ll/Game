@@ -31,7 +31,8 @@ const sameLv = (a, b) => (a.lv || 0) === (b.lv || 0)
 
 // ctx: { scene, fx, gore, players (Map), hurt(p, dmg), hit(e, dmg, p, kx, kz), night(), loaded(x, z) (chunk carregado?),
 //        impact(x, z, tipo) (tremor/pausa), bash(e) (bate numa barricada encostada; true = bateu),
-//        entry(e, x, z, dt) (ir pela janela? null = normal · {x, z} = ande até aqui · {hold} = parado na janela) }
+//        entry(e, x, z, dt) (ir pela janela? null = normal · {x, z} = ande até aqui · {hold} = parado na janela),
+//        director() (cerco: { x, z (base), extra, share, ring } à noite com base, senão null) }
 export function CreateHorde(ctx) {
   const { scene, fx, gore } = ctx
   const list = []
@@ -57,7 +58,7 @@ export function CreateHorde(ctx) {
       hp, maxHp: hp, fast, score: fast ? R.score : N.score, speed: fast ? rnd(R.speed[0], R.speed[1]) : rnd(N.speed[0], N.speed[1]),
       state: 'wander', stT: 0, dur: 0, target: null, seenT: 0, tx: x, tz: z, goal: null, waitT: rnd(0, 3),
       senseT: Math.random() * 0.3, cool: 0.5, biteT: 0, bite: 0, hitT: 0, imp: 0, dying: 0, fallDir: -1,
-      kx: 0, kz: 0, slowT: 0, path: null, pathT: 0, unstick: 0, stuckT: 0, sx: x, sz: z, moving: 0, t: Math.random() * 10,
+      kx: 0, kz: 0, slowT: 0, path: null, pathT: 0, unstick: 0, stuckT: 0, sx: x, sz: z, moving: 0, t: Math.random() * 10, siege: false,
     })
     if (e.ice) e.ice.visible = false
     e.rig.restore() // reaproveitado: volta inteiro
@@ -376,16 +377,27 @@ export function CreateHorde(ctx) {
   }
 
   // ---------------------------------------------------------------- população: mantém a horda em volta dos jogadores
-  function wanted(alive) {
+  function wanted(alive, dir) {
     if (!alive.length) return 0
     const P = Z.population
     let n = P.base + P.perPlayer * (alive.length - 1) + Math.floor(st.time / P.growEvery) * P.growBy
     if (ctx.night()) n *= P.night
     if (alive.some((p) => InZone(p.x, p.z, 10))) n *= P.town // povoados e cidades: mais gente (morta)
+    if (dir) n += dir.extra // cerco: pico da noite
     return Math.min(MAX_ZOMBIES, Math.round(n))
   }
   // ponto livre num anel em volta de um jogador, fora da vista, em chunk carregado (com colisores)
-  function spawnPoint(alive) {
+  // cerco (dir): parte nasce num anel em volta da base; devolve [x, z, true] para quem é do cerco
+  function spawnPoint(alive, dir) {
+    if (dir && dir.share && Math.random() < dir.share) {
+      for (let n = 0; n < 10; n++) {
+        const a = Math.random() * Math.PI * 2, d = rnd(dir.ring[0], dir.ring[1])
+        const x = dir.x + Math.sin(a) * d, z = dir.z + Math.cos(a) * d
+        if (!ctx.loaded(x, z) || Blocked(x, z, 0.8) || PointInBuilding(x, z, 1.2)) continue
+        if (alive.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < (SPAWN_MIN - 4) ** 2)) continue
+        return [x, z, true]
+      }
+    }
     for (let n = 0; n < 14; n++) {
       const t = alive[(Math.random() * alive.length) | 0]
       const a = Math.random() * Math.PI * 2, d = rnd(SPAWN_MIN, SPAWN_MAX) + (t.vehicle ? 8 : 0)
@@ -397,7 +409,9 @@ export function CreateHorde(ctx) {
     }
     return null
   }
-  function arrive(e, alive) {
+  function arrive(e, alive, dir, siege) {
+    // cerco: marcha até a base
+    if (siege && dir) { e.siege = true; investigate(e, dir.x + rnd(-1.5, 1.5), dir.z + rnd(-1.5, 1.5)); return }
     // parte já chega andando na direção dos jogadores (o mundo nunca fica parado)
     if (Math.random() < 0.35) { const t = alive[(Math.random() * alive.length) | 0]; investigate(e, t.x + rnd(-8, 8), t.z + rnd(-8, 8)) }
   }
@@ -406,7 +420,10 @@ export function CreateHorde(ctx) {
     const players = [...ctx.players.values()], alive = players.filter((p) => !p.dead)
     st.time += dt
     const range = ctx.night() ? SIGHT.night : SIGHT.day
+    const dir = ctx.director ? ctx.director() : null
     for (let i = list.length - 1; i >= 0; i--) if (step(list[i], dt, players, range)) remove(i)
+    // cerco: quem é do cerco e ficou à toa volta a atacar a base
+    if (dir) for (const e of list) if (e.siege && e.state === 'wander' && (e.sgT = (e.sgT || 0) - dt) <= 0) { e.sgT = 3; investigate(e, dir.x + rnd(-1.5, 1.5), dir.z + rnd(-1.5, 1.5)) }
 
     // empurra uns aos outros (e para fora dos jogadores); caídos e corpos não ocupam espaço
     for (let i = 0; i < list.length; i++) {
@@ -454,16 +471,17 @@ export function CreateHorde(ctx) {
     // longe demais (ou em chunk descarregado): renasce perto dos jogadores
     if ((st.farT -= dt) <= 0 && alive.length) {
       st.farT = 0.5
-      const want = wanted(alive)
+      const want = wanted(alive, dir)
       let living = list.filter((e) => e.state !== 'dead').length
       for (let i = list.length - 1; i >= 0; i--) {
         const e = list[i]
         if (e.state === 'dead' || e.state === 'grab') continue
         const n = nearest(e, alive), d = Math.hypot(n.x - e.x, n.z - e.z)
-        if (living > want + 6 && d > 30 && e.state !== 'chase') { remove(i); living--; continue } // horda menor (amanheceu)
+        if (living > want + 6 && d > 30 && e.state !== 'chase' && !(dir && e.siege)) { remove(i); living--; continue } // horda menor (amanheceu)
         if (d < FAR && ctx.loaded(e.x, e.z)) continue
-        const pt = spawnPoint(alive)
-        if (pt) { reset(e, pt[0], pt[1]); arrive(e, alive) } else { remove(i); living-- }
+        if (dir && e.siege && Math.hypot(e.x - dir.x, e.z - dir.z) < FAR + 18 && ctx.loaded(e.x, e.z)) continue // do cerco: fica perto da base
+        const pt = spawnPoint(alive, dir)
+        if (pt) { reset(e, pt[0], pt[1]); arrive(e, alive, dir, pt[2]) } else { remove(i); living-- }
       }
       // corpos demais: os mais antigos afundam
       const corpses = list.filter((e) => e.state === 'dead').sort((a, b) => a.dying - b.dying)
@@ -471,9 +489,9 @@ export function CreateHorde(ctx) {
     }
     // nascimento contínuo até a população desejada
     if (alive.length && (st.spawnT -= dt) <= 0) {
-      const want = wanted(alive), living = list.reduce((n, e) => n + (e.state !== 'dead'), 0)
+      const want = wanted(alive, dir), living = list.reduce((n, e) => n + (e.state !== 'dead'), 0)
       st.spawnT = living < want * 0.5 ? 0.12 : 0.45
-      if (living < want) { const pt = spawnPoint(alive); if (pt) arrive(make(pt[0], pt[1]), alive) }
+      if (living < want) { const pt = spawnPoint(alive, dir); if (pt) arrive(make(pt[0], pt[1]), alive, dir, pt[2]) }
     }
 
     for (const e of list) if (e.state !== 'dead') e.rig.animate(dt, e)
