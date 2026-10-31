@@ -3,7 +3,9 @@
   "scripts": {
     "dev": "vite --host",
     "server": "node server/server.js",
-    "build": "vite build"
+    "build": "vite build",
+    "check": "node scripts/check.mjs",
+    "smoke": "playwright install --only-shell chromium && node scripts/smoke.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
@@ -11,6 +13,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "playwright": "^1.64.1",
     "vite": "^8.0.14"
   }
 }

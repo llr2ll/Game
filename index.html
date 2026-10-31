@@ -26,7 +26,7 @@
       </div>
     </div>
     <div id="hud">
-      <div id="top"><span id="wave"></span><span id="score"></span><span id="clock"></span></div>
+      <div id="top"><span id="wave"></span><span id="score"></span><span id="inv"></span><span id="clock"></span></div>
       <div id="plist"></div>
       <div id="room">
         <canvas id="qr" width="130" height="130"></canvas>
@@ -38,7 +38,7 @@
       <div id="help">PC (teste): WASD mover/dirigir · clique esquerdo ataca · direito só mira · Shift correr · Espaço pular · E entra/sai do veículo · Q F G habilidades · 1 2 3 armas · R recarregar · Esc menu · T desfoque · H esconde sala · N +1 hora · K muda o tempo · M som liga/desliga</div>
     </div>
     <script type="module">
-      import { LoadGame } from './src/index.js'
+      import { LoadGame } from './src/games/survivor/main.js'
       window.onload = async () => (window.scene = await LoadGame())
     </script>
   </body>
