@@ -37,7 +37,10 @@
       @keyframes shake { from { transform: rotate(-6deg) scale(1.08) } to { transform: rotate(6deg) scale(1.12) } }
       .side:active, #run.on { background: #ff9d3f99; border-color: #ff9d3f }
       #st { width: 140px; height: 6px; background: #444; border-radius: 3px; overflow: hidden } #st i { display: block; height: 100%; width: 100%; background: #f0c040 }
-      #state { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 32px; font-weight: 800; display: none; text-shadow: 0 2px 6px #000; white-space: pre-line; padding: 0 20px }
+      #pick { position: absolute; left: 0; right: 0; top: 64%; display: none; justify-content: center; align-items: center; gap: 18px; z-index: 5 }
+      #pick button { font-size: 28px; font-weight: 800; width: 72px; height: 60px; border: 0; border-radius: 12px; background: #fff3; color: #fff; touch-action: manipulation }
+      #pick b { font-size: 26px; min-width: 200px; text-align: center; text-shadow: 0 2px 6px #000 }
+      #state { position: absolute; left: 0; right: 0; top: 40%; pointer-events: none; text-align: center; font-size: 32px; font-weight: 800; display: none; text-shadow: 0 2px 6px #000; white-space: pre-line; padding: 0 20px }
     </style>
   </head>
   <body>
@@ -51,11 +54,12 @@
     <div id="pad">
       <div class="zone" id="zl"><div class="base"><div class="knob"></div></div><div class="hint">mover</div></div>
       <div class="zone" id="zr"><div class="base"><div class="knob"></div></div><div class="hint">mirar e atacar</div></div>
-      <div id="top"><div><div id="hp"><i></i></div><div id="st" style="margin-top:4px"><i></i></div></div><span id="cls"></span><span id="weapon"></span><span id="time"></span></div>
+      <div id="top"><div><div id="hp"><i></i></div><div id="st" style="margin-top:4px"><i></i></div></div><span id="cls"></span><span id="weapon"></span><span id="time"></span><span id="inv"></span></div>
       <div id="btns"><button id="b1" class="hide"></button><button id="b2" class="hide"></button><button id="b3" class="hide"></button></div>
       <button class="side" id="run">Correr</button><button class="side" id="jump">Pular</button><button class="side" id="shove">Empurrar</button><button id="use">🚗 Entrar</button>
       <div id="state"></div>
+      <div id="pick"><button id="prev">◀</button><b id="pickname"></b><button id="next">▶</button></div>
     </div>
-    <script type="module" src="/src/controller/controller.js"></script>
+    <script type="module" src="/src/engine/input/phone.js"></script>
   </body>
 </html>
